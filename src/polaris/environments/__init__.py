@@ -134,3 +134,21 @@ gym.register(
         ),
     },
 )
+
+gym.register(
+    id="DROID-PutRedCup",
+    entry_point=ManagerBasedRLSplatEnv,
+    disable_env_checker=True,
+    order_enforce=False,
+    kwargs={
+        "env_cfg_entry_point": DroidCfg,
+        "usd_file": str(DATA_PATH / "put_red_cup/scene.usda"),
+        "rubric": Rubric(
+            criteria=[
+                checkers.reach("red_cup", threshold=0.2),
+                (checkers.lift("red_cup", threshold=0.04), [0]),
+                (checkers.is_within_xy("red_cup", "cuttingboard_eval", percent_threshold=0.8), [1]),
+            ]
+        ),
+    },
+)
