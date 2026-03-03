@@ -4,3 +4,6 @@
 [submodule "third_party/openpi"]
 	path = third_party/openpi
 	url = git@github.com:Physical-Intelligence/openpi.git
+[submodule "src/curobo"]
+	path = src/curobo
+	url = https://github.com/NVlabs/curobo.git

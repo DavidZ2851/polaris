@@ -141,6 +141,7 @@ class ManagerBasedRLSplatEnv(ManagerBasedRLEnv):
         stage = get_current_stage()
 
         # Allocate splats for all rigid objects in the scene and raytrace semantic tags
+        breakpoint()
         for name in self.scene.rigid_objects:
             path = Path(self.usd_file).parent / "assets" / name / "splat.ply"
             if path.exists():

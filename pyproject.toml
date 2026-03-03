@@ -16,6 +16,7 @@ dependencies = [
     "diff-surfel-rasterization",
     "simple-knn",
     "openpi-client",
+    "nvidia-curobo",
     #"torch>=2.9.0", # Change here for different CUDA version
     #"torchvision>=0.24.0", # Change here for different CUDA version
 ]
@@ -32,6 +33,7 @@ override-dependencies = [
 
 [tool.uv.extra-build-dependencies]
 flatdict = ["setuptools<82"]
+polaris = ["hatchling"]
 
 [build-system]
 requires = ["hatchling"]
@@ -49,6 +51,7 @@ simple-knn = { path = "src/simple-knn", editable=true}
 openpi-client = { path = "third_party/openpi/packages/openpi-client" }
 torch = { index = "torch" }
 torchvision = { index = "torch" }
+nvidia-curobo = { path = "src/curobo", editable = true }
 
 
 [[tool.uv.index]]
@@ -58,7 +61,7 @@ explicit = true
 
 [[tool.uv.index]]
 name = "torch"
-url = "https://download.pytorch.org/whl/cu130" # Change here for different CUDA version
+url = "https://download.pytorch.org/whl/cu126" # Change here for different CUDA version
 explicit = true
 
 

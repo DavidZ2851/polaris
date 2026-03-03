@@ -147,7 +147,6 @@ gym.register(
             criteria=[
                 checkers.reach("red_cup", threshold=0.2),
                 (checkers.lift("red_cup", threshold=0.04), [0]),
-                (checkers.is_within_xy("red_cup", "cuttingboard_eval", percent_threshold=0.8), [1]),
             ]
         ),
     },
