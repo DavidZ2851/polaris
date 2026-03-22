@@ -63,6 +63,30 @@ gym.register(
 )
 
 gym.register(
+    id="DROID-FoodBussing-V2",
+    entry_point=ManagerBasedRLSplatEnv,
+    disable_env_checker=True,
+    order_enforce=False,
+    kwargs={
+        "env_cfg_entry_point": DroidCfg,
+        "usd_file": str(DATA_PATH / "food_blussing_v2/scene.usda"),
+        "rubric": Rubric(
+            criteria=[
+                checkers.reach("battery", threshold=0.2),
+                # checkers.reach("grapes", threshold=0.2),
+                # (checkers.lift("ice_cream_", threshold=0.06), [0]),
+                # (checkers.lift("grapes", threshold=0.06), [1]),
+                # (
+                #     checkers.is_within_xy("ice_cream_", "bowl", percent_threshold=0.8),
+                #     [2],
+                # ),
+                # (checkers.is_within_xy("grapes", "bowl", percent_threshold=0.8), [3]),
+            ]
+        ),
+    },
+)
+
+gym.register(
     id="DROID-PanClean",
     entry_point=ManagerBasedRLSplatEnv,
     disable_env_checker=True,
@@ -143,6 +167,23 @@ gym.register(
     kwargs={
         "env_cfg_entry_point": DroidCfg,
         "usd_file": str(DATA_PATH / "put_red_cup/scene.usda"),
+        "rubric": Rubric(
+            criteria=[
+                checkers.reach("red_cup", threshold=0.2),
+                (checkers.lift("red_cup", threshold=0.04), [0]),
+            ]
+        ),
+    },
+)
+
+gym.register(
+    id="DROID-PutRedCup-no-curtain",
+    entry_point=ManagerBasedRLSplatEnv,
+    disable_env_checker=True,
+    order_enforce=False,
+    kwargs={
+        "env_cfg_entry_point": DroidCfg,
+        "usd_file": str(DATA_PATH / "put_red_cup_no_curtain/scene.usda"),
         "rubric": Rubric(
             criteria=[
                 checkers.reach("red_cup", threshold=0.2),

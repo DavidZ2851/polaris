@@ -257,7 +257,7 @@ class GaussianModel:
         optimizable_tensors = self.replace_tensor_to_optimizer(opacities_new, "opacity")
         self._opacity = optimizable_tensors["opacity"]
 
-    def load_ply(self, path):
+    def load_ply(self, path, mode="2dgs"):
         plydata = PlyData.read(path)
 
         xyz = np.stack(
@@ -296,7 +296,10 @@ class GaussianModel:
             for p in plydata.elements[0].properties
             if p.name.startswith("scale_")
         ]
-        scale_names = sorted(scale_names, key=lambda x: int(x.split("_")[-1]))[:2]
+        if mode == "2dgs":
+            scale_names = sorted(scale_names, key=lambda x: int(x.split("_")[-1]))[:2]
+        else:
+            scale_names = sorted(scale_names, key=lambda x: int(x.split("_")[-1])) 
         scales = np.zeros((xyz.shape[0], len(scale_names)))
         for idx, attr_name in enumerate(scale_names):
             scales[:, idx] = np.asarray(plydata.elements[0][attr_name])

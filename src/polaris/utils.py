@@ -3,6 +3,7 @@ import torch
 import json
 from datetime import datetime
 from pathlib import Path
+import yaml
 
 from isaaclab.envs import ManagerBasedRLEnvCfg
 from isaaclab_tasks.utils import load_cfg_from_registry
@@ -46,6 +47,16 @@ def load_eval_initial_conditions(
     )
     return instruction, initial_conditions
 
+def load_task_config(config_path: str):
+    with open(config_path) as f:
+        cfg = yaml.safe_load(f)
+
+    object_randomization = {
+        obj: {ax: tuple(rng) for ax, rng in axes.items()}
+        for obj, axes in cfg["object_randomization"].items()
+    }
+
+    return object_randomization, cfg["waypoints"]
 
 def run_folder_path(run_folder: str | None, usd: str, policy: str) -> Path:
     """

@@ -1,9 +1,9 @@
 import torch
 import numpy as np
 import polaris.utils as utils
-from polaris.splat_renderer.gaussian_renderer import GaussianModel, render
+from polaris.splat_renderer.gaussian_renderer import GaussianModel, render, render_3dgs
 from polaris.splat_renderer.scene.cameras import Camera
-
+from pathlib import Path
 
 class DummyPipe:
     convert_SHs_python = False
@@ -220,3 +220,121 @@ class SplatRenderer:
             self.big_model._xyz[indices] = xyzs
             self.big_model._rotation[indices] = rotations
             self.big_model._features_rest[indices] = features_rests
+
+
+class SplatRenderer3DGS:
+    def __init__(self, splats, bg_color=[0.5, 0.5, 0.5], device=0):
+        self.device = device
+        self.bg_color = torch.tensor(bg_color).to(self.device).float()
+        self.pcds = splats
+        self.pipe = DummyPipe()
+
+        self.model = GaussianModel(3)
+        self.original_model = GaussianModel(3)
+        self.splat_mapping = {}
+
+        self.init_models()
+        print("Finished loading models!")
+
+    def _load_into_model(self, pcd_path):
+        name = Path(pcd_path).stem
+        model = GaussianModel(3)
+        model.load_ply(pcd_path, "3dgs")
+
+        # pad 2dgs scaling dim=2 → dim=3
+        if model._scaling.shape[1] == 2:
+            pad = torch.full((model._scaling.shape[0], 1), -15.0, device=model._scaling.device)
+            model._scaling = torch.cat([model._scaling, pad], dim=1)
+
+        cur_len = self.model._xyz.shape[0]
+        self.splat_mapping[name] = (cur_len, cur_len + model._xyz.shape[0])
+
+        with torch.no_grad():
+            for attr in ['_xyz', '_rotation', '_opacity', '_features_rest', '_features_dc', '_scaling']:
+                setattr(self.model, attr, torch.cat(
+                    [getattr(self.model, attr), getattr(model, attr).to(self.device)], dim=0
+                ))
+
+    def init_models(self):
+        with torch.no_grad():
+            for attr in ['_xyz', '_rotation', '_opacity', '_features_rest', '_features_dc', '_scaling']:
+                setattr(self.model, attr, getattr(self.model, attr).to(self.device))
+
+        for name, pcd_path in self.pcds.items():
+            self._load_into_model(pcd_path)
+
+        self._clone_originals()
+
+    def add_splats(self, splats):
+        for name, pcd_path in splats.items():
+            self._load_into_model(pcd_path)
+        self._clone_originals()
+
+    def _clone_originals(self):
+        with torch.no_grad():
+            for attr in ['_xyz', '_rotation', '_opacity', '_features_rest', '_features_dc', '_scaling']:
+                setattr(self.original_model, attr, getattr(self.model, attr).clone())
+
+    def init_cameras(self, cam_dict):
+        self.cameras = {}
+        for name, cam_params in cam_dict.items():
+            self.cameras[name] = Camera(
+                colmap_id=0,
+                R=np.eye(3),
+                T=np.array([0.0, 0.0, 0.0]),
+                FoVy=cam_params["fovy"],
+                FoVx=cam_params["fovx"],
+                image=torch.zeros(3, cam_params["res"][0], cam_params["res"][1]),
+                gt_alpha_mask=None,
+                image_name="test",
+                uid=123,
+                data_device=self.device,
+            )
+
+    def render(self, extrinsics_dict):
+        p_mat = np.array([[0, 0, 1], [-1, 0, 0], [0, -1, 0]])
+        images = {}
+        for name in self.cameras:
+            if name in extrinsics_dict:
+                cam_r = extrinsics_dict[name]["rot"] @ p_mat
+                self.cameras[name].set_extrinsics(cam_r, extrinsics_dict[name]["pos"])
+            with torch.no_grad():
+                image = render_3dgs(self.cameras[name], self.model, self.pipe, self.bg_color)["render"]
+            images[name] = image.permute(1, 2, 0).clone()
+        return images
+
+    def render_raw(self, extrinsics_dict):
+        images = {}
+        for name in self.cameras:
+            if name in extrinsics_dict:
+                self.cameras[name].set_extrinsics(
+                    extrinsics_dict[name]["rot"], extrinsics_dict[name]["pos"]
+                )
+            with torch.no_grad():
+                image = render_3dgs(self.cameras[name], self.model, self.pipe, self.bg_color)["render"]
+            images[name] = image.permute(1, 2, 0).clone()
+        return images
+
+    def transform_many(self, all_transforms):
+        with torch.no_grad():
+            indices, props = [], []
+            for name, transform in all_transforms.items():
+                if name not in self.splat_mapping:
+                    continue
+                translate = transform[0].to(self.device)
+                rotate = transform[1].to(self.device)
+                start, end = self.splat_mapping[name]
+
+                new_xyz = utils.rotate_vector_by_quaternion(
+                    rotate, self.original_model._xyz[start:end]
+                ) + translate
+                new_rotation = utils.multiply_quaternions(
+                    rotate, self.original_model._rotation[start:end]
+                )
+                indices.append(torch.arange(start, end))
+                props.append({"xyz": new_xyz, "rotation": new_rotation})
+
+            if indices:
+                idx = torch.cat(indices)
+                self.model._xyz[idx] = torch.cat([p["xyz"] for p in props])
+                self.model._rotation[idx] = torch.cat([p["rotation"] for p in props])

@@ -7,3 +7,9 @@
 [submodule "src/curobo"]
 	path = src/curobo
 	url = https://github.com/NVlabs/curobo.git
+[submodule "src/lerobot"]
+	path = src/lerobot
+	url = https://github.com/r-pad/lerobot.git
+[submodule "src/diff-gaussian-rasterization"]
+	path = src/diff-gaussian-rasterization
+	url = https://github.com/graphdeco-inria/diff-gaussian-rasterization

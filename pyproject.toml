@@ -17,6 +17,10 @@ dependencies = [
     "simple-knn",
     "openpi-client",
     "nvidia-curobo",
+    "open3d",
+    "usd-core",
+    "diff-gaussian-rasterization",
+    "gsplat",
     #"torch>=2.9.0", # Change here for different CUDA version
     #"torchvision>=0.24.0", # Change here for different CUDA version
 ]
@@ -34,6 +38,7 @@ override-dependencies = [
 [tool.uv.extra-build-dependencies]
 flatdict = ["setuptools<82"]
 polaris = ["hatchling"]
+diff-gaussian-rasterization = ["torch"]
 
 [build-system]
 requires = ["hatchling"]
@@ -47,6 +52,7 @@ dev = [
 [tool.uv.sources]
 isaacsim = { index = "nvidia" }
 diff-surfel-rasterization = { path = "src/diff-surfel-rasterization", editable=true}
+diff-gaussian-rasterization = { path = "src/diff-gaussian-rasterization", editable=true}
 simple-knn = { path = "src/simple-knn", editable=true}
 openpi-client = { path = "third_party/openpi/packages/openpi-client" }
 torch = { index = "torch" }

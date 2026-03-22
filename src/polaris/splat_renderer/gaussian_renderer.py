@@ -1,9 +1,60 @@
 import torch
 import math
+import numpy as np
 from diff_surfel_rasterization import GaussianRasterizationSettings, GaussianRasterizer
+from diff_gaussian_rasterization import GaussianRasterizationSettings as GaussianRasterizationSettings3DGS, GaussianRasterizer as GaussianRasterizer3DGS
 from polaris.splat_renderer.scene.gaussian_model import GaussianModel
 import polaris.splat_renderer.utils.sh_utils as sh_utils
 import polaris.splat_renderer.utils.point_utils as point_utils
+
+def render_3dgs(viewpoint_camera, pc, pipe, bg_color, scaling_modifier=1.0):
+    screenspace_points = (
+        torch.zeros_like(
+            pc.get_xyz, dtype=pc.get_xyz.dtype, requires_grad=True, device="cuda"
+        ) + 0
+    )
+    try:
+        screenspace_points.retain_grad()
+    except:
+        pass
+
+    tanfovx = math.tan(viewpoint_camera.FoVx * 0.5)
+    tanfovy = math.tan(viewpoint_camera.FoVy * 0.5)
+
+    raster_settings = GaussianRasterizationSettings3DGS(
+        image_height=int(viewpoint_camera.image_height),
+        image_width=int(viewpoint_camera.image_width),
+        tanfovx=tanfovx,
+        tanfovy=tanfovy,
+        bg=bg_color,
+        scale_modifier=scaling_modifier,
+        viewmatrix=viewpoint_camera.world_view_transform,
+        projmatrix=viewpoint_camera.full_proj_transform,
+        sh_degree=pc.active_sh_degree,
+        campos=viewpoint_camera.camera_center,
+        prefiltered=False,
+        debug=pipe.debug,
+    )
+
+    rasterizer = GaussianRasterizer3DGS(raster_settings=raster_settings)
+
+    rendered_image, radii = rasterizer(
+        means3D=pc.get_xyz,
+        means2D=screenspace_points,
+        shs=pc.get_features,
+        colors_precomp=None,
+        opacities=pc.get_opacity,
+        scales=pc.get_scaling,
+        rotations=pc.get_rotation,
+        cov3D_precomp=None,
+    )
+
+    return {
+        "render": rendered_image,
+        "viewspace_points": screenspace_points,
+        "visibility_filter": radii > 0,
+        "radii": radii,
+    }
 
 
 def render(

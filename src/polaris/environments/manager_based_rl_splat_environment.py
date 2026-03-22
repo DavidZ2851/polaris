@@ -10,7 +10,7 @@ from isaacsim.core.prims import GeometryPrim
 from isaacsim.core.utils.stage import get_current_stage
 from pxr import Semantics
 
-from polaris.splat_renderer import SplatRenderer
+from polaris.splat_renderer import SplatRenderer3DGS, SplatRenderer
 from polaris.environments.rubrics import Rubric
 
 
@@ -84,11 +84,64 @@ class ManagerBasedRLSplatEnv(ManagerBasedRLEnv):
             self.observation_manager.compute()
         )  # update observation after setting ICs if needed
         obs["splat"] = self.custom_render(expensive, transform_static=True)
+        obs["object_pcd"] = self.get_object_pcds_from_mesh(4500)
+        obs["joint_pos"] = self.scene["robot"].data.joint_pos
 
         # Evaluate rubric and add to info
         info.update(self._evaluate_rubric())
 
         return obs, info
+    
+    def get_object_pcds_from_mesh(self, n_points: int = 4500) -> np.ndarray:
+        from pxr import UsdGeom
+        from scipy.spatial.transform import Rotation
+
+        stage = get_current_stage()
+        all_vertices = []
+
+        def get_all_vertices(p):
+            verts = []
+            m = UsdGeom.Mesh(p)
+            if m:
+                pts = m.GetPointsAttr().Get()
+                if pts:
+                    verts.extend(pts)
+            for child in p.GetAllChildren():
+                verts.extend(get_all_vertices(child))
+            return verts
+
+        for obj_name in self.scene.rigid_objects:
+            if "static" in obj_name:
+                continue
+
+            pos  = self.scene[obj_name].data.root_state_w[0, :3].detach().cpu().numpy()
+            quat = self.scene[obj_name].data.root_state_w[0, 3:7].detach().cpu().numpy()
+            R    = Rotation.from_quat([quat[1], quat[2], quat[3], quat[0]]).as_matrix()
+
+            mesh_path = f"/World/envs/env_0/scene/{obj_name}"
+            prim      = stage.GetPrimAtPath(mesh_path)
+            vertices  = get_all_vertices(prim)
+
+            if not vertices:
+                continue
+
+            vertices = np.array(vertices, dtype=np.float32)
+            # Transform to world frame
+            points_world = (R @ vertices.T).T + pos
+            all_vertices.append(points_world)
+
+        if not all_vertices:
+            return np.zeros((n_points, 3), dtype=np.float32)
+
+        all_vertices = np.concatenate(all_vertices, axis=0)  # (N_total, 3)
+
+        # Sample n_points from combined pool
+        if len(all_vertices) >= n_points:
+            idx = np.random.choice(len(all_vertices), n_points, replace=False)
+        else:
+            idx = np.random.choice(len(all_vertices), n_points, replace=True)
+
+        return all_vertices[idx].astype(np.float32)  # (n_points, 3)
 
     def step(self, action, expensive=True):
         """
@@ -103,6 +156,8 @@ class ManagerBasedRLSplatEnv(ManagerBasedRLEnv):
         """
         obs, rew, done, trunc, info = super().step(action)
         obs["splat"] = self.custom_render(expensive)
+        obs["object_pcd"] = None
+        obs["joint_pos"] = self.scene["robot"].data.joint_pos
         # obs["splat"] = {cam: self.get_robot_from_sim()[cam]["rgb"] for cam in self.get_robot_from_sim()}
 
         # Evaluate rubric and add to info
@@ -141,7 +196,6 @@ class ManagerBasedRLSplatEnv(ManagerBasedRLEnv):
         stage = get_current_stage()
 
         # Allocate splats for all rigid objects in the scene and raytrace semantic tags
-        breakpoint()
         for name in self.scene.rigid_objects:
             path = Path(self.usd_file).parent / "assets" / name / "splat.ply"
             if path.exists():
@@ -178,7 +232,7 @@ class ManagerBasedRLSplatEnv(ManagerBasedRLEnv):
                 "fovx": fovx,
                 "fovy": fovy,
             }
-        self.splat_renderer = SplatRenderer(splats=splats, device=self.device)
+        self.splat_renderer = SplatRenderer3DGS(splats=splats, device=self.device)
         self.splat_renderer.init_cameras(camera_cfg)
 
     def setup_splat_robot(self):
@@ -254,8 +308,8 @@ class ManagerBasedRLSplatEnv(ManagerBasedRLEnv):
                 rot = math.matrix_from_quat(quat).detach().cpu().numpy()
                 cam_extrinsics_dict[name] = {"pos": pos, "rot": rot}
 
-            if len(self.splat_renderer.pcds) > 0:
-                self.splat_renderer.render(cam_extrinsics_dict)
+            # if len(self.splat_renderer.pcds) > 0:
+            self.splat_renderer.render(cam_extrinsics_dict)
 
     def render_splat(self):
         # get camera extrinsics
@@ -269,19 +323,19 @@ class ManagerBasedRLSplatEnv(ManagerBasedRLEnv):
                 cam_extrinsics_dict[name] = {"pos": pos, "rot": rot}
 
         # perform splat rendering
-        if len(self.splat_renderer.pcds) > 0:
-            rgb = self.splat_renderer.render(cam_extrinsics_dict)
-        else:
-            rgb = {
-                name: torch.zeros(
-                    (
-                        self.splat_renderer.cameras[name].image_height,
-                        self.splat_renderer.cameras[name].image_width,
-                        3,
-                    )
-                )
-                for name in cam_extrinsics_dict
-            }
+        # if len(self.splat_renderer.pcds) > 0:
+        rgb = self.splat_renderer.render(cam_extrinsics_dict)
+        # else:
+        #     rgb = {
+        #         name: torch.zeros(
+        #             (
+        #                 self.splat_renderer.cameras[name].image_height,
+        #                 self.splat_renderer.cameras[name].image_width,
+        #                 3,
+        #             )
+        #         )
+        #         for name in cam_extrinsics_dict
+        #     }
 
         # process output
         for k, v in rgb.items():
