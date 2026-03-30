@@ -165,8 +165,6 @@ def render(
     else:
         colors_precomp = override_color
 
-    # breakpoint()
-
     rendered_image, radii, allmap = rasterizer(
         means3D=means3D,
         means2D=means2D,

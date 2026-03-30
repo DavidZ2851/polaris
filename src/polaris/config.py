@@ -42,7 +42,8 @@ class PolicyArgs:
     host: str = "0.0.0.0"
     port: int = 8000
     open_loop_horizon: int | None = 8
-    policy_path: str | None = None
+    policy_path: tuple[str, ...] | str = None
+    device : str = "cuda:1"
 
 
 @dataclass
@@ -56,12 +57,15 @@ class EvalArgs:
     initial_conditions_file: str | None = None  # Path to initial conditions file
     instruction: str | None = None  # Override language instruction
     rollouts: int | None = None  # Number of rollouts to evaluate
+    robot: str = "franka_robotiq_2f_85"
+    env_folder = None
+    device = "cuda:0"
 
 
 @dataclass
 class DataArgs:
     """Data Generation configuration."""
-    env: str = "DROID-PutRedCup-no-curtain" # Which IsaacLab environment to use
+    environment: str = "DROID-PutRedCup-no-curtain" # Which IsaacLab environment to use
     env_folder = None
     save_dir: str | None = None # Path to run folder
     headless: bool = True  # Whether to run in headless mode
@@ -69,7 +73,6 @@ class DataArgs:
     instruction: str | None = None  # Override language instruction
     num_episodes: int = 50
     max_attempts: int = 100
-    steps_per_waypoint: int = 1
     device : str = "cuda"
 
 

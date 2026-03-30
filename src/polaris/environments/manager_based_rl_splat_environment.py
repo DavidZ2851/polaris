@@ -12,7 +12,9 @@ from pxr import Semantics
 
 from polaris.splat_renderer import SplatRenderer3DGS, SplatRenderer
 from polaris.environments.rubrics import Rubric
+from scipy.spatial.transform import Rotation
 
+ISAAC_TO_CUROBO_IDX = [0, 1, 2, 3, 4, 5, 6, 7, 9, 11, 8, 10, 12]
 
 class ManagerBasedRLSplatEnv(ManagerBasedRLEnv):
     rubric: Rubric | None = None
@@ -35,6 +37,7 @@ class ManagerBasedRLSplatEnv(ManagerBasedRLEnv):
         self.setup_splat_world_and_robot_views()
         self.setup_splat_robot()
         self.rubric = rubric
+        self._setup_grasp_frame_offset()
 
     def _evaluate_rubric(self) -> dict:
         """Evaluate rubric and return results for info dict."""
@@ -84,8 +87,8 @@ class ManagerBasedRLSplatEnv(ManagerBasedRLEnv):
             self.observation_manager.compute()
         )  # update observation after setting ICs if needed
         obs["splat"] = self.custom_render(expensive, transform_static=True)
-        obs["object_pcd"] = self.get_object_pcds_from_mesh(4500)
-        obs["joint_pos"] = self.scene["robot"].data.joint_pos
+        # obs["object_pcd"] = self.get_object_pcds_from_mesh(4500)
+        obs["joint_pos"] = self.scene["robot"].data.joint_pos.squeeze(0)[ISAAC_TO_CUROBO_IDX]
 
         # Evaluate rubric and add to info
         info.update(self._evaluate_rubric())
@@ -114,19 +117,40 @@ class ManagerBasedRLSplatEnv(ManagerBasedRLEnv):
             if "static" in obj_name:
                 continue
 
+            # current world pose from Isaac
             pos  = self.scene[obj_name].data.root_state_w[0, :3].detach().cpu().numpy()
-            quat = self.scene[obj_name].data.root_state_w[0, 3:7].detach().cpu().numpy()
+            quat = self.scene[obj_name].data.root_state_w[0, 3:7].detach().cpu().numpy()  # wxyz
             R    = Rotation.from_quat([quat[1], quat[2], quat[3], quat[0]]).as_matrix()
 
             mesh_path = f"/World/envs/env_0/scene/{obj_name}"
             prim      = stage.GetPrimAtPath(mesh_path)
-            vertices  = get_all_vertices(prim)
 
-            if not vertices:
+            if not prim.IsValid():
                 continue
 
-            vertices = np.array(vertices, dtype=np.float32)
-            # Transform to world frame
+            # Read scale from USD xformOp
+            xformable = UsdGeom.Xformable(prim)
+            scale = np.array([1.0, 1.0, 1.0])
+            for op in xformable.GetOrderedXformOps():
+                if "scale" in op.GetName():
+                    s = op.Get()
+                    scale = np.array([s[0], s[1], s[2]], dtype=np.float32)
+                    break
+
+            vertices = get_all_vertices(prim)
+
+            if not vertices:
+                print(f"  [warn] no vertices found for {obj_name}")
+                continue
+
+            vertices = np.array(vertices, dtype=np.float32)  # (N, 3)
+
+            vertices = vertices * 0.01 * scale
+
+            # TODO: I didn't know why the rotation_90 is needed
+            R_correction = Rotation.from_euler('x', 90, degrees=True).as_matrix()
+            vertices = (R_correction @ vertices.T).T
+
             points_world = (R @ vertices.T).T + pos
             all_vertices.append(points_world)
 
@@ -143,6 +167,15 @@ class ManagerBasedRLSplatEnv(ManagerBasedRLEnv):
 
         return all_vertices[idx].astype(np.float32)  # (n_points, 3)
 
+    def _setup_grasp_frame_offset(self):
+        yaml_wxyz = np.array([0.0, 0.7071067811865476, 0.0, 0.7071067811865476])  # wxyz
+        yaml_xyzw = yaml_wxyz[[1, 2, 3, 0]]  # → xyzw for scipy
+
+        self._grasp_offset_pos = np.array([0.15335, 0.0, 0.0], dtype=np.float32)
+        self._grasp_offset_rot = Rotation.from_quat(yaml_xyzw)
+
+        self._base_link_idx = self.scene["robot"].find_bodies("base_link")[0][0]    
+
     def step(self, action, expensive=True):
         """
         Steps the environment
@@ -156,9 +189,8 @@ class ManagerBasedRLSplatEnv(ManagerBasedRLEnv):
         """
         obs, rew, done, trunc, info = super().step(action)
         obs["splat"] = self.custom_render(expensive)
-        obs["object_pcd"] = None
-        obs["joint_pos"] = self.scene["robot"].data.joint_pos
-        # obs["splat"] = {cam: self.get_robot_from_sim()[cam]["rgb"] for cam in self.get_robot_from_sim()}
+        # obs["object_pcd"] = self.get_object_pcds_from_mesh(4500)
+        obs["joint_pos"] = self.scene["robot"].data.joint_pos.squeeze(0)[ISAAC_TO_CUROBO_IDX]
 
         # Evaluate rubric and add to info
         info.update(self._evaluate_rubric())
@@ -179,8 +211,12 @@ class ManagerBasedRLSplatEnv(ManagerBasedRLEnv):
                 )
                 mask = mask_and_rgb[cam]["mask"]
                 sim_img = mask_and_rgb[cam]["rgb"]
-                new_img = np.where(mask, sim_img, og_img)
-                rgb[cam] = new_img
+
+                if "wrist" in cam:
+                    rgb[cam] = sim_img
+                else:
+                    new_img = np.where(mask, sim_img, og_img)
+                    rgb[cam] = new_img
         else:
             rgb = {}
             for cam in self.scene.sensors:

@@ -70,14 +70,14 @@ class LeRobotDiffusionClient(InferenceClient):
         curr_obs = self._extract_observation(obs)
 
         # Always push latest obs into rolling buffers
-        self.exterior_buf.append(curr_obs["exterior_image"])  # (H, W, 3) uint8
+        self.exterior_buf.append(curr_obs["cam1"])  # (H, W, 3) uint8
         self.wrist_buf.append(curr_obs["wrist_image"])
         self.state_buf.append(curr_obs["state"])
 
         viz = None
         if return_viz:
             import cv2
-            ext_small  = cv2.resize(curr_obs["exterior_image"], (224, 224))
+            ext_small  = cv2.resize(curr_obs["cam1"], (224, 224))
             wrist_small = cv2.resize(curr_obs["wrist_image"],   (224, 224))
             viz = np.concatenate([ext_small, wrist_small], axis=1)
 
@@ -135,7 +135,7 @@ class LeRobotDiffusionClient(InferenceClient):
         }
 
     def _extract_observation(self, obs_dict: dict) -> dict:
-        exterior_image = obs_dict["splat"]["external_cam"]   # (H, W, 3) uint8
+        exterior_image = obs_dict["splat"]["cam1"]   # (H, W, 3) uint8
         wrist_image    = obs_dict["splat"]["wrist_cam"]
 
         robot_state    = obs_dict["policy"]

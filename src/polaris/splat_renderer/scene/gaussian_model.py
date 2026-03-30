@@ -257,7 +257,7 @@ class GaussianModel:
         optimizable_tensors = self.replace_tensor_to_optimizer(opacities_new, "opacity")
         self._opacity = optimizable_tensors["opacity"]
 
-    def load_ply(self, path, mode="2dgs"):
+    def load_ply(self, path, mode="3dgs"):
         plydata = PlyData.read(path)
 
         xyz = np.stack(

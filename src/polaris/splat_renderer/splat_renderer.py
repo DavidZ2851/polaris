@@ -106,7 +106,7 @@ class SplatRenderer:
         self.big_model._scaling = self.big_model._scaling.to(self.device)
         for name, pcd_path in self.pcds.items():
             model = GaussianModel(3)
-            model.load_ply(pcd_path)
+            model.load_ply(pcd_path, "2dgs")
 
             # get mappings
             cur_len = self.big_model._xyz.shape
@@ -230,6 +230,7 @@ class SplatRenderer3DGS:
         self.pipe = DummyPipe()
 
         self.model = GaussianModel(3)
+        self.model_2dgs = GaussianModel(3)
         self.original_model = GaussianModel(3)
         self.splat_mapping = {}
 
@@ -240,11 +241,6 @@ class SplatRenderer3DGS:
         name = Path(pcd_path).stem
         model = GaussianModel(3)
         model.load_ply(pcd_path, "3dgs")
-
-        # pad 2dgs scaling dim=2 → dim=3
-        if model._scaling.shape[1] == 2:
-            pad = torch.full((model._scaling.shape[0], 1), -15.0, device=model._scaling.device)
-            model._scaling = torch.cat([model._scaling, pad], dim=1)
 
         cur_len = self.model._xyz.shape[0]
         self.splat_mapping[name] = (cur_len, cur_len + model._xyz.shape[0])
