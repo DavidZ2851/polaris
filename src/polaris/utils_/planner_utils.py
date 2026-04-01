@@ -6,6 +6,53 @@ import os
 from polaris.utils_.data_utils import ObsRecorder
 from polaris.utils_.eval_utils import is_success
 
+def setup_curobo(robot_cfg="franka_robotiq_2f_85.yml"):
+
+    import omni.usd
+    from curobo.util.usd_helper import UsdHelper
+    from curobo.types.base import TensorDeviceType
+    from curobo.wrap.reacher.motion_gen import MotionGen, MotionGenConfig
+
+    stage = omni.usd.get_context().get_stage()
+    assert stage is not None
+
+    robot_prim_path = "/World/envs/env_0/robot"
+    usd_help = UsdHelper()
+    usd_help.stage = stage
+
+    obstacle_world = usd_help.get_obstacles_from_stage(
+        only_paths=["/World/envs/env_0"],
+        reference_prim_path=robot_prim_path,
+        ignore_substring=[
+            robot_prim_path,                       
+            "/World/defaultGroundPlane",
+            "randomization",        
+            "workspace_static",                   
+            "OmniverseKitViewportCameraMesh",   
+            "CameraModel",                        
+            "env_light",                    
+            "defaultLight",                 
+            "Environment",                         
+            "Render",
+        ],
+    )
+    print("Obstacle meshes:", [m.name for m in (obstacle_world.mesh or [])])
+
+    world_cfg = obstacle_world.get_collision_check_world()
+    tensor_args = TensorDeviceType()
+
+    motion_gen_config = MotionGenConfig.load_from_robot_config(
+        robot_cfg,
+        world_cfg,
+        tensor_args,
+        interpolation_dt=0.02,
+        use_cuda_graph=True,
+    )
+    motion_gen = MotionGen(motion_gen_config)
+    motion_gen.warmup()
+
+    return motion_gen
+
 class MotionPlanner:
     def __init__(
         self,
@@ -19,7 +66,7 @@ class MotionPlanner:
         self.waypoints = waypoints
         self.device = device
         self.recorder = recorder
-        self.motion_gen  = self.setup_curobo(f"{robot_cfg}.yml")
+        self.motion_gen  = setup_curobo(f"{robot_cfg}.yml")
 
         self.GRIPPER_JOINT_IDX = 7
         self.GRIPPER_OPEN_VAL = 0
@@ -35,52 +82,6 @@ class MotionPlanner:
         self.recorder.reset()
         return obs
     
-    def setup_curobo(self, robot_cfg):
-
-        import omni.usd
-        from curobo.util.usd_helper import UsdHelper
-        from curobo.types.base import TensorDeviceType
-        from curobo.wrap.reacher.motion_gen import MotionGen, MotionGenConfig
-
-        stage = omni.usd.get_context().get_stage()
-        assert stage is not None
-
-        robot_prim_path = "/World/envs/env_0/robot"
-        usd_help = UsdHelper()
-        usd_help.stage = stage
-
-        obstacle_world = usd_help.get_obstacles_from_stage(
-            only_paths=["/World/envs/env_0"],
-            reference_prim_path=robot_prim_path,
-            ignore_substring=[
-                robot_prim_path,                       
-                "/World/defaultGroundPlane",
-                "randomization",        
-                "workspace_static",                   
-                "OmniverseKitViewportCameraMesh",   
-                "CameraModel",                        
-                "env_light",                    
-                "defaultLight",                 
-                "Environment",                         
-                "Render",
-            ],
-        )
-        print("Obstacle meshes:", [m.name for m in (obstacle_world.mesh or [])])
-
-        world_cfg = obstacle_world.get_collision_check_world()
-        tensor_args = TensorDeviceType()
-
-        motion_gen_config = MotionGenConfig.load_from_robot_config(
-            robot_cfg,
-            world_cfg,
-            tensor_args,
-            interpolation_dt=0.02,
-            use_cuda_graph=True,
-        )
-        motion_gen = MotionGen(motion_gen_config)
-        motion_gen.warmup()
-
-        return motion_gen
     
     def get_current_joints(self, obs) -> torch.Tensor:
         """Return (13,) joint positions on CUDA from policy obs dict."""
@@ -127,6 +128,19 @@ class MotionPlanner:
             return ik_result.solution.squeeze(0)[:, :self.GRIPPER_JOINT_IDX]
         else:
             return None
+        
+    def action_ee(self, action, gripper_val):
+        """Convert arm joint action to end-effector pose + gripper command."""
+        from curobo.types.robot import JointState
+
+        action_ee = self.motion_gen.rollout_fn.compute_kinematics(
+            JointState.from_position(action[:self.GRIPPER_JOINT_IDX])
+        )
+        ee_pos = action_ee.ee_pos_seq.squeeze(0)
+        ee_quat = action_ee.ee_quat_seq.squeeze(0)
+
+        gripper_action = torch.tensor([gripper_val], device=self.device)
+        return torch.cat([ee_pos, ee_quat, gripper_action]).unsqueeze(0) # (1, 8)
  
     def execute_trajectory(self, obs, traj, gripper_val):
         """
@@ -143,8 +157,10 @@ class MotionPlanner:
 
         for i in range(traj.shape[0]):
             action = traj[i].clone()
+            obs["policy"]["action_ee"]  = self.action_ee(action, gripper_val)
             action = torch.cat([action, gripper_action])  # (8,) = (7 arm joints + 1 gripper)
-
+            obs["policy"]["action_joint"]  = action.unsqueeze(0)  # (1, 8)
+            
             self.add_obs(obs)
 
             if i == 0:
@@ -164,7 +180,7 @@ class MotionPlanner:
     def add_obs(self, obs):
         self.recorder.add(obs)
 
-    def subgoal_gripper_state(self, obs, new_grasp: float, n_steps: int = 2):
+    def subgoal_gripper_state(self, obs, new_grasp: float, n_steps: int = 1):
         """Hold current arm joints and only change the gripper for n_steps."""
         joints = self.get_current_joints(obs)                     # (13,)
         arm_joints    = joints[:self.GRIPPER_JOINT_IDX]           # (7,)
@@ -173,6 +189,9 @@ class MotionPlanner:
 
         print(f"  [Gripper change] target={'CLOSE' if new_grasp else 'OPEN'} over {n_steps} steps")
         for _ in range(n_steps):
+
+            obs["policy"]["action_ee"]  = self.action_ee(arm_joints, new_grasp)
+            obs["policy"]["action_joint"]  = action.unsqueeze(0)  # (1, 8)
             self.add_obs(obs)
             obs, rew, term, trunc, info = self.env.step(action.unsqueeze(0), expensive=True)
             if term[0] or trunc[0]:

@@ -275,17 +275,18 @@ class OscActionCfg:
         controller_cfg=OperationalSpaceControllerCfg(
             target_types=["pose_abs"],
             impedance_mode="fixed",
-            motion_stiffness_task=400.0,
             inertial_dynamics_decoupling=True,
             partial_inertial_dynamics_decoupling=False,
-            gravity_compensation=True,
+            gravity_compensation=False,
             motion_damping_ratio_task=1.0,
+            nullspace_stiffness=10.0,
             motion_control_axes_task=[1, 1, 1, 1, 1, 1],
+            motion_stiffness_task=[60.0, 60.0, 60.0, 30.0, 30.0, 30.0],
             nullspace_control="position",
+            nullspace_damping_ratio=1.0,
         ),
     )
 
-    # gripper stays exactly the same as before
     finger_joint = BinaryJointPositionZeroToOneActionCfg(
         asset_name="robot",
         joint_names=["finger_joint"],

@@ -194,21 +194,3 @@ gym.register(
         ),
     },
 )
-
-gym.register(
-    id="DROID-PutRedCup-no-curtain-osc",
-    entry_point=ManagerBasedRLSplatEnv,
-    disable_env_checker=True,
-    order_enforce=False,
-    kwargs={
-        "env_cfg_entry_point": OscDroidCfg,
-        "usd_file": str(DATA_PATH / "put_red_cup_no_curtain/scene.usda"),
-        "rubric": Rubric(
-            criteria=[
-                checkers.reach("red_cup", threshold=0.2),
-                (checkers.lift("red_cup", threshold=0.04), [0]),
-                (checkers.is_within_xy("red_cup", "blue_plate", percent_threshold=0.8), [1]),
-            ]
-        ),
-    },
-)

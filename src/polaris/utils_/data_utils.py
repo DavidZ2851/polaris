@@ -2,6 +2,7 @@ import numpy as np
 import os
 import json
 import imageio.v3 as iio
+import torch
 
 from polaris.utils_.vis_utils import debug_plot
 
@@ -76,7 +77,7 @@ class ObsRecorder:
                 if self.next_event_idx[i] > idx),
                 self.next_event_idx[-1]
             )
-            #self.all_obs[idx]["goal_gripper_pcd"] = self.all_obs[next_event_idx]["gripper_pcd"]
+            self.all_obs[idx]["policy"]["goal_gripper_pcd"] = self.all_obs[next_event_idx]["policy"]["gripper_pcd"]
 
 
     def save_episode(self):
@@ -98,28 +99,35 @@ class ObsRecorder:
             iio.imwrite(os.path.join(ep_dir, "debug_video.mp4"), debug_frames, fps=self.fps)
 
         wrist_frames  = np.stack([o["splat"]["wrist_cam"] for o in all_obs]) # T
-        # states        = np.stack([o["state"]       for o in all_obs]) # (T, 8)
-        # abs_actions   = np.stack([o["abs_action"]  for o in all_obs if o["abs_action"] is not None]) # (T-1, 8)
-        # gripper_pcd  = np.stack([o["gripper_pcd"] for o in all_obs]) # (T, 4, 3)
-        # goal_gripper_pcd     = np.stack([o["goal_gripper_pcd"] for o in all_obs]) # (T, 4, 3)
-        # object_pcd    = np.stack([o["object_pcd"] for o in all_obs]) # (T, 4500, 3)
+
+        states_ee        = torch.cat([o["policy"]["ee_pose"] for o in all_obs]).cpu().numpy() # (T, 8)
+        states_joint     = torch.cat([torch.cat([o["policy"]["arm_joint_pos"], o["policy"]["gripper_pos"]], dim=1) for o in all_obs]).cpu().numpy() # (T, 8)
+        
+        action_ee   = torch.cat([o["policy"]["action_ee"]  for o in all_obs if "action_ee"in o["policy"]]).cpu().numpy() # (T-1, 8)
+        action_joint= torch.cat([o["policy"]["action_joint"] for o in all_obs if "action_joint" in o["policy"]]).cpu().numpy() # (T-1, 8)
+
+        gripper_pcd  = torch.cat([o["policy"]["gripper_pcd"] for o in all_obs]).cpu().numpy() # (T, 4, 3)
+        goal_gripper_pcd     = torch.cat([o["policy"]["goal_gripper_pcd"] for o in all_obs]).cpu().numpy() # (T, 4, 3)
 
         iio.imwrite(os.path.join(ep_dir, "wrist_cam.mp4"), wrist_frames, fps=self.fps)
-        # np.savez(
-        #     os.path.join(ep_dir, "trajectory.npz"),
-        #     # states        = states.astype(np.float32),
-        #     # abs_actions   = abs_actions.astype(np.float32),
-        #     # gripper_pcd  = gripper_pcd.astype(np.float32),
-        #     # goal_gripper_pcd     = goal_gripper_pcd.astype(np.float32),
-        #     # object_pcd    = object_pcd.astype(np.float32),
-        # )
+        np.savez(
+            os.path.join(ep_dir, "trajectory.npz"),
+            states_ee        = states_ee.astype(np.float32),
+            states_joint   = states_joint.astype(np.float32),
+            action_ee      = action_ee.astype(np.float32),
+            action_joint   = action_joint.astype(np.float32),
+            gripper_pcd  = gripper_pcd.astype(np.float32),
+            goal_gripper_pcd     = goal_gripper_pcd.astype(np.float32),
+
+        )
 
         print(f"  [saved] {ep_dir}/")
-        # print(f"           states       : {states.shape}")
-        # print(f"           abs_actions  : {abs_actions.shape}")
-        # print(f"           gripper_pcds : {gripper_pcd.shape}")
-        # print(f"           goal_gripper_pcds    : {goal_gripper_pcd.shape}")
-        # print(f"           object_pcd   : {object_pcd.shape}")
+        print(f"           states_ee       : {states_ee.shape}")
+        print(f"           states_joint    : {states_joint.shape}")
+        print(f"           action_ee       : {action_ee.shape}")
+        print(f"           action_joint    : {action_joint.shape}")
+        print(f"           gripper_pcds : {gripper_pcd.shape}")
+        print(f"           goal_gripper_pcds    : {goal_gripper_pcd.shape}")
 
 
     def reset(self):
