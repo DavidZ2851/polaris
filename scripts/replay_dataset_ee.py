@@ -76,11 +76,13 @@ traj = np.load(demo_file)
 
 for i in range(traj["frame_indices"].shape[0]):
     ee_pos = traj["action_pos_right"][i]
-    ee_quat = traj["action_orixyzw_left"][i]
+    ee_quat = traj["action_orixyzw_right"][i]
 
     ee_pos = torch.from_numpy(ee_pos).to(DEVICE)
     
-    ee_quat = np.array([ee_quat[1], ee_quat[2], ee_quat[3], ee_quat[0]])  # Convert xyzw to wxyz
+    # Convert xyzw to wxyz
+    ee_quat = ee_quat[[3, 0, 1, 2]]
+   
     ee_quat = torch.from_numpy(ee_quat).to(DEVICE)
 
     from curobo.types.math import Pose

@@ -3,12 +3,47 @@ import os
 import json
 import imageio.v3 as iio
 import torch
+import av
 
 from polaris.utils_.vis_utils import debug_plot
 
-# ---------------------------------------------------------------------------
-# Rotation helpers
-# ---------------------------------------------------------------------------
+from scipy.ndimage import distance_transform_edt
+
+MAX_DEPTH = 3  # in meters, for uint16 encoding
+
+def fill_depth(depth: np.ndarray) -> np.ndarray:
+    # depth: (H, W) float32
+    invalid = depth == 0
+    if not invalid.any():
+        return depth
+    depth = depth.copy()
+    depth[invalid] = MAX_DEPTH
+    return depth
+
+def save_depth_mkv(depth_frames: np.ndarray, path: str, fps: int):
+    """
+    depth_frames: (T, H, W, 1) float32 in meters
+    """
+    depth = depth_frames.squeeze(-1).copy()
+    depth = np.nan_to_num(depth, nan=0.0, posinf=0.0, neginf=0.0)
+    depth = np.stack([fill_depth(d) for d in depth])  # fill per frame
+    depth = np.clip(depth, 0.0, 65.535)
+    depth_mm = (depth * 1000).astype(np.uint16)
+    T, H, W = depth_mm.shape
+
+    with av.open(path, "w") as container:
+        stream = container.add_stream("ffv1", rate=fps)
+        stream.width = W
+        stream.height = H
+        stream.pix_fmt = "gray16le"
+
+        for frame_data in depth_mm:
+            frame = av.VideoFrame.from_ndarray(frame_data, format="gray16le")
+            for packet in stream.encode(frame):
+                container.mux(packet)
+
+        for packet in stream.encode():
+            container.mux(packet)
 
 class ObsRecorder:
     def __init__(self, calibration_path: str, save_dir: str, fps: int = 30, ep_idx: int = 0):
@@ -92,13 +127,18 @@ class ObsRecorder:
 
         for cam in self.calibration.keys():
             frames  = np.stack([o["splat"][cam] for o in all_obs if o.get("splat") is not None])
+            depths = np.stack([o["splat"][f"{cam}_depth"] for o in all_obs if o.get("splat") is not None])
             iio.imwrite(os.path.join(ep_dir, f"{cam}.mp4"), frames, fps=self.fps)
+            save_depth_mkv(depths, os.path.join(ep_dir, f"{cam}_depth.mkv"), self.fps)
 
         if self.debug_frames:
             debug_frames = np.stack(self.debug_frames) 
             iio.imwrite(os.path.join(ep_dir, "debug_video.mp4"), debug_frames, fps=self.fps)
 
         wrist_frames  = np.stack([o["splat"]["wrist_cam"] for o in all_obs]) # T
+        iio.imwrite(os.path.join(ep_dir, "wrist_cam.mp4"), wrist_frames, fps=self.fps)
+        wrist_depth = np.stack([o["splat"]["wrist_cam_depth"] for o in all_obs])
+        save_depth_mkv(wrist_depth, os.path.join(ep_dir, "wrist_cam_depth.mkv"), self.fps)
 
         states_ee        = torch.cat([o["policy"]["ee_pose"] for o in all_obs]).cpu().numpy() # (T, 8)
         states_joint     = torch.cat([torch.cat([o["policy"]["arm_joint_pos"], o["policy"]["gripper_pos"]], dim=1) for o in all_obs]).cpu().numpy() # (T, 8)
@@ -109,7 +149,7 @@ class ObsRecorder:
         gripper_pcd  = torch.cat([o["policy"]["gripper_pcd"] for o in all_obs]).cpu().numpy() # (T, 4, 3)
         goal_gripper_pcd     = torch.cat([o["policy"]["goal_gripper_pcd"] for o in all_obs]).cpu().numpy() # (T, 4, 3)
 
-        iio.imwrite(os.path.join(ep_dir, "wrist_cam.mp4"), wrist_frames, fps=self.fps)
+        
         np.savez(
             os.path.join(ep_dir, "trajectory.npz"),
             states_ee        = states_ee.astype(np.float32),

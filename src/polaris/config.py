@@ -39,11 +39,11 @@ class PolicyArgs:
 
     # name: str                              # Policy name (pi05_droid_jointpos, pi0_fast_droid_jointpos, etc.)
     client: str = "DroidJointPos"  # Client name (DroidJointPos, Fake, etc.)
-    host: str = "0.0.0.0"
+    host: str = "localhost"
     port: int = 8000
     open_loop_horizon: int | None = 8
     policy_path: tuple[str, ...] | str = None
-    device : str = "cuda:1"
+    device : str = "cuda:0"
 
 
 @dataclass
@@ -58,8 +58,10 @@ class EvalArgs:
     instruction: str | None = None  # Override language instruction
     rollouts: int | None = None  # Number of rollouts to evaluate
     robot: str = "franka_robotiq_2f_85"
-    env_folder = None
-    device = "cuda:0"
+    env_folder: str | None = None
+    device: str = "cuda:0"
+    max_episode_length: int = 450 # max_episode_length = episode_length_s / (dt * decimation)
+    tqdm_position: int = 0
 
 
 @dataclass

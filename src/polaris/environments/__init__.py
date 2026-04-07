@@ -3,7 +3,6 @@ from polaris.environments.manager_based_rl_splat_environment import (
     ManagerBasedRLSplatEnv,
 )
 from polaris.environments.droid_cfg import EnvCfg as DroidCfg
-from polaris.environments.droid_cfg import OscEnvCfg as OscDroidCfg
 from isaaclab.envs import ManagerBasedRLEnv
 
 # Import rubric system
