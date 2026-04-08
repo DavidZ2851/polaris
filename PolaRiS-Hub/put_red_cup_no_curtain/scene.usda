@@ -7,8 +7,8 @@
                 double radius = 5
             }
             dictionary Perspective = {
-                double3 position = (-404645.80945895903, -29989.296994005104, -359873.92125015997)
-                double3 target = (-718429.5856956863, -53244.48210847349, -638939.1144974318)
+                double3 position = (1.1916477899031572, 0.3302713484305449, 0.024467380808160695)
+                double3 target = (0.3812415174395626, 0.19740184635743044, 0.02206904627411653)
             }
             dictionary Right = {
                 double3 position = (0, -5, 0)
@@ -18,7 +18,7 @@
                 double3 position = (0, 0, 5)
                 double radius = 5
             }
-            string boundCamera = "/World/cam1"
+            string boundCamera = "/OmniverseKit_Persp"
         }
         dictionary omni_layer = {
             string authoring_layer = "./scene.usda"
@@ -53,7 +53,7 @@ def Xform "World"
         bool physics:rigidBodyEnabled = 1
         quatd xformOp:orient = (0.47495304006951566, 0, 0, 0.8800111418207869)
         float3 xformOp:scale = (0.8, 0.8, 0.8)
-        double3 xformOp:translate = (2.72, 1.620000023841858, 0.65)
+        double3 xformOp:translate = (2.706651, 1.63087, 0.629538)
         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
 
         over "workspace_static"
@@ -96,7 +96,7 @@ def Xform "World"
         bool physics:rigidBodyEnabled = 1
         quatd xformOp:orient = (1, 0, 0, 0)
         float3 xformOp:scale = (0.3, 0.3, 0.3)
-        double3 xformOp:translate = (0.444114821853232, 0, 0.09210183252246132)
+        double3 xformOp:translate = (0.42021682190000004, -0.020943, 0.04213426742302829)
         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
 
         over "mesh"
@@ -174,7 +174,7 @@ def Xform "World"
         bool physics:rigidBodyEnabled = 1
         quatd xformOp:orient = (1, 0, 0, 0)
         float3 xformOp:scale = (0.3, 0.3, 0.3)
-        double3 xformOp:translate = (0.6217548749590757, 0.3224178077292829, 0.09210183252246132)
+        double3 xformOp:translate = (0.6217548749590757, 0.3224178077292829, 0.05200335602573705)
         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
 
         over "mesh"
@@ -222,7 +222,7 @@ def Xform "World"
         float verticalAperture = 1.182482
         quatd xformOp:orient = (0.6761107155999249, 0.24851429577046708, 0.2245085212068372, 0.6562856610914072)
         double3 xformOp:scale = (1, 1, 1)
-        double3 xformOp:translate = (0.90361032, -0.13823468, 0.60485432)
+        double3 xformOp:translate = (0.90361032, -0.13823468, 0.62485432)
         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
 
         over "OmniverseKitViewportCameraMesh" (
@@ -265,7 +265,7 @@ def Xform "World"
         float verticalAperture = 1.1891837
         quatd xformOp:orient = (0.9420162717948904, 0.3331528077078309, 0.03907283700795362, -0.009373569127810065)
         double3 xformOp:scale = (1, 1, 1)
-        double3 xformOp:translate = (0.52157959, -0.61566698, 0.58502813)
+        double3 xformOp:translate = (0.52157959, -0.61566698, 0.60502813)
         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
     }
 }
@@ -293,17 +293,18 @@ def Xform "Environment"
         double3 xformOp:translate = (0.15858390132129604, 1.0718937953890884, 0.8960589557718804)
         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
     }
+
     def SphereLight "sphereLight"
     {
-        float inputs:intensity = 5000
-        float inputs:radius = 0.1
-        color3f inputs:color = (1.0, 1.0, 1.0)
+        color3f inputs:color = (1, 1, 1)
         bool inputs:enableColorTemperature = 0
         float inputs:exposure = 0
+        float inputs:intensity = 5000
+        float inputs:radius = 0.1
         bool physics:rigidBodyEnabled = 0
-        double3 xformOp:translate = (0.0, 0.0, 0.3)
-        double3 xformOp:scale = (1, 1, 1)
         quatd xformOp:orient = (1, 0, 0, 0)
+        double3 xformOp:scale = (1, 1, 1)
+        double3 xformOp:translate = (0, 0, 0.3)
         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
     }
 }
@@ -326,7 +327,7 @@ def "Render" (
                 no_delete = true
             )
             {
-                rel camera = </World/cam1>
+                rel camera = </OmniverseKit_Persp>
                 token omni:rtx:background:source:texture:textureMode = "repeatMirrored"
                 token omni:rtx:background:source:type = "domeLight"
                 bool omni:rtx:dlss:frameGeneration = 0
@@ -349,7 +350,7 @@ def "Render" (
                 uint omni:rtx:viewTile:limit = 4294967295
                 rel orderedVars = </Render/Vars/LdrColor>
                 custom bool overrideClipRange = 0
-                uniform int2 resolution = (897, 577)
+                uniform int2 resolution = (1233, 685)
             }
         }
     }
