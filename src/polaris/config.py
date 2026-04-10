@@ -75,7 +75,9 @@ class DataArgs:
     instruction: str | None = None  # Override language instruction
     num_episodes: int = 50
     max_attempts: int = 100
-    device : str = "cuda"
+    debug: bool = False
+    device: str = "cuda"
+
 
 
 @dataclass

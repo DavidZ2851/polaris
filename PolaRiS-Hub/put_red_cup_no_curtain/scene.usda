@@ -8,7 +8,7 @@
             }
             dictionary Perspective = {
                 double3 position = (1.1916477899031572, 0.3302713484305449, 0.024467380808160695)
-                double3 target = (0.3812415174395626, 0.19740184635743044, 0.02206904627411653)
+                double3 target = (0.3812415174395626, 0.19740184635743047, 0.022069046274116533)
             }
             dictionary Right = {
                 double3 position = (0, -5, 0)
@@ -174,7 +174,7 @@ def Xform "World"
         bool physics:rigidBodyEnabled = 1
         quatd xformOp:orient = (1, 0, 0, 0)
         float3 xformOp:scale = (0.3, 0.3, 0.3)
-        double3 xformOp:translate = (0.6217548749590757, 0.3224178077292829, 0.05200335602573705)
+        double3 xformOp:translate = (0.6217548749590757, 0.3224178077292829, 0.06730355860016474)
         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
 
         over "mesh"

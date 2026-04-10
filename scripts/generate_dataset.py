@@ -62,7 +62,7 @@ def main(data_args: DataArgs):
 
     num_attempts = 0
 
-    recorder = ObsRecorder(calibration_path, save_dir, fps=30, ep_idx=num_success)
+    recorder = ObsRecorder(calibration_path, save_dir, fps=30, ep_idx=num_success, debug=data_args.debug)
 
     planner = MotionPlanner(
         env=env,
@@ -70,6 +70,7 @@ def main(data_args: DataArgs):
         robot_cfg=data_args.robot,
         waypoints=waypoints,
         device=DEVICE,
+        debug=data_args.debug,
     )
     
     while num_success < data_args.num_episodes and num_attempts < data_args.max_attempts:
