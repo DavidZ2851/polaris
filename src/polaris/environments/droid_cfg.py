@@ -203,6 +203,25 @@ class SceneCfg(InteractiveSceneCfg):
                 ),
             )
 
+        # High-angle viz camera: same rotation as external_cam but lifted +0.5m in z
+        self.viz_cam = CameraCfg(
+            prim_path="{ENV_REGEX_NS}/scene/viz_cam",
+            height=720,
+            width=1280,
+            data_types=["rgb", "semantic_segmentation"],
+            colorize_semantic_segmentation=False,
+            spawn=sim_utils.PinholeCameraCfg(
+                focal_length=1.0476,
+                horizontal_aperture=2.5452,
+                vertical_aperture=1.4721,
+            ),
+            offset=CameraCfg.OffsetCfg(
+                pos=(-0.01, -0.33, 0.98),  # +0.5m above external_cam
+                rot=(0.76, 0.43, -0.24, -0.42),
+                convention="opengl",
+            ),
+        )
+
 
 ### SceneCfg ###
 

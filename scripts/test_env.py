@@ -9,14 +9,15 @@ import json
 parser = argparse.ArgumentParser()
 args_cli, _ = parser.parse_known_args()
 args_cli.enable_cameras = True
-args_cli.headless = True
+# args_cli.headless = True
+args_cli.headless = False
 app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
 
 import polaris.environments
 from isaaclab_tasks.utils import parse_env_cfg
 from polaris.environments.manager_based_rl_splat_environment import ManagerBasedRLSplatEnv
-from polaris.utils import load_eval_initial_conditions
+from polaris.utils import load_eval_initial_conditions, DATA_PATH
 from polaris.utils_.vis_utils import debug_plot
 import omni.replicator.core as rep
 
@@ -148,7 +149,7 @@ def sample_random_action(joint_limits: torch.Tensor, batch_size: int = 1) -> tor
 
 
 language_instruction, initial_conditions = load_eval_initial_conditions(env.usd_file)
-calibration = get_cam_param("/home/haotian/polaris/PolaRiS-Hub/put_red_cup_no_curtain/cam_calibration.json")
+calibration = get_cam_param(str(DATA_PATH / "put_red_cup_no_curtain/cam_calibration.json"))
 # obs, info = env.reset(object_positions=initial_conditions[0], expensive=True)
 
 # robot = env.unwrapped.scene["robot"]

@@ -1,3 +1,4 @@
+import os
 import tyro
 import mediapy
 
@@ -13,21 +14,8 @@ from pathlib import Path
 from isaaclab.app import AppLauncher
 
 from polaris.config import EvalArgs
+from polaris.utils_.eval_utils import randomize_object_poses
 import numpy as np
-
-TABLE_RANGE = {
-    "x": (0.383, 0.45891),
-    "y": (0.0, 0.12889),
-    # "z" : (0.15, 0.15),
-    "z": (0.11022, 0.11022),
-}
-
-def random_cup_pose():
-    return [
-        np.random.uniform(*TABLE_RANGE["x"]),
-        np.random.uniform(*TABLE_RANGE["y"]),
-        np.random.uniform(*TABLE_RANGE["z"]),
-    ]
 
 
 def main(eval_args: EvalArgs):
@@ -46,9 +34,12 @@ def main(eval_args: EvalArgs):
     from polaris.environments.manager_based_rl_splat_environment import (
         ManagerBasedRLSplatEnv,
     )
-    from polaris.utils import load_eval_initial_conditions
+    from polaris.utils import load_eval_initial_conditions, load_task_config
     from polaris.policy import InferenceClient
     # from real2simeval.autoscoring import TASK_TO_SUCCESS_CHECKER
+
+    if eval_args.env_folder is None:
+        eval_args.env_folder = os.path.dirname(gym.spec(eval_args.environment).kwargs["usd_file"])
 
     env_cfg = parse_env_cfg(
         eval_args.environment,
@@ -56,18 +47,19 @@ def main(eval_args: EvalArgs):
         num_envs=1,
         use_fabric=True,
     )
-    env: MangerBasedRLSplatEnv = gym.make(eval_args.environment, cfg=env_cfg)  # type: ignore
+    env: ManagerBasedRLSplatEnv = gym.make(eval_args.environment, cfg=env_cfg)  # type: ignore
 
     language_instruction, initial_conditions = load_eval_initial_conditions(
         usd=env.usd_file,
         initial_conditions_file=eval_args.initial_conditions_file,
         rollouts=eval_args.rollouts,
     )
-    # Randomise cup pose
+    object_randomization, _ = load_task_config(
+        os.path.join(eval_args.env_folder, "task_config.yaml")
+    )
 
-    cup_pos = random_cup_pose()
-    ic = dict(initial_conditions[0])
-    ic["red_cup"][:3] = cup_pos
+    # Randomise object poses
+    ic = randomize_object_poses(object_randomization, initial_conditions)[0]
 
     rollouts = eval_args.rollouts
     # Resume CSV logging
@@ -135,9 +127,7 @@ def main(eval_args: EvalArgs):
             print(f"Episode {episode} finished. Episode length: {bar.n}")
             episode += 1
             bar = tqdm.tqdm(range(horizon))
-            cup_pos = random_cup_pose()
-            ic = dict(initial_conditions[0])
-            ic["red_cup"][:3] = cup_pos
+            ic = randomize_object_poses(object_randomization, initial_conditions)[0]
             obs, info = env.reset(
                 object_positions=ic, expensive = True
             )

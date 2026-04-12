@@ -43,6 +43,7 @@ polaris = "polaris.cli:main"
 [tool.uv]
 override-dependencies = [
     "pywin32==306; sys_platform == 'win32'",
+    "evdev-binary; sys_platform == 'linux'",
     "torch>=2.9.0", # Change here for different CUDA version
     "torchvision>=0.24.0", # Change here for different CUDA version
     "robosuite @ https://github.com/ARISE-Initiative/robosuite/archive/b9d8d3de5e3dfd1724f4a0e6555246c460407daa.tar.gz",
