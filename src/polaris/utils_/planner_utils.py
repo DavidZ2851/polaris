@@ -61,11 +61,13 @@ class MotionPlanner:
         recorder: ObsRecorder,
         device: str = "cuda",
         robot_cfg: str = "franka_robotiq_2f_85",
+        debug: bool = False,
     ):
         self.env  = env
         self.waypoints = waypoints
         self.device = device
         self.recorder = recorder
+        self.debug = debug
         self.motion_gen  = setup_curobo(f"{robot_cfg}.yml")
 
         self.GRIPPER_JOINT_IDX = 7
@@ -255,12 +257,16 @@ class MotionPlanner:
                     return obs, info, True
             else:
                 print(f"  Planning failed at waypoint {i}.")
+                if self.debug:
+                    self.add_obs(obs)
+                    self.recorder.save_episode()
+                    print("Save visualization for debug")
                 return obs, info, False
         
         # record terminal state ONCE after all waypoints complete
         self.add_obs(obs)
 
-        if is_success(info):
+        if is_success(info) or self.debug:
             self.recorder.save_episode()
 
         return obs, info, False

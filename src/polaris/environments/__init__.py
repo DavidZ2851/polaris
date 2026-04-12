@@ -3,7 +3,6 @@ from polaris.environments.manager_based_rl_splat_environment import (
     ManagerBasedRLSplatEnv,
 )
 from polaris.environments.droid_cfg import EnvCfg as DroidCfg
-from polaris.environments.droid_cfg import OscEnvCfg as OscDroidCfg
 from isaaclab.envs import ManagerBasedRLEnv
 
 # Import rubric system
@@ -161,23 +160,6 @@ gym.register(
 )
 
 gym.register(
-    id="DROID-PutRedCup",
-    entry_point=ManagerBasedRLSplatEnv,
-    disable_env_checker=True,
-    order_enforce=False,
-    kwargs={
-        "env_cfg_entry_point": DroidCfg,
-        "usd_file": str(DATA_PATH / "put_red_cup/scene.usda"),
-        "rubric": Rubric(
-            criteria=[
-                checkers.reach("red_cup", threshold=0.2),
-                (checkers.lift("red_cup", threshold=0.04), [0]),
-            ]
-        ),
-    },
-)
-
-gym.register(
     id="DROID-PutRedCup-no-curtain",
     entry_point=ManagerBasedRLSplatEnv,
     disable_env_checker=True,
@@ -190,6 +172,25 @@ gym.register(
                 checkers.reach("red_cup", threshold=0.2),
                 (checkers.lift("red_cup", threshold=0.04), [0]),
                 (checkers.is_within_xy("red_cup", "blue_plate", percent_threshold=0.8), [1]),
+            ]
+        ),
+    },
+)
+
+gym.register(
+    id="DROID-StackBlock",
+    entry_point=ManagerBasedRLSplatEnv,
+    disable_env_checker=True,
+    order_enforce=False,
+    kwargs={
+        "env_cfg_entry_point": DroidCfg,
+        "usd_file": str(DATA_PATH / "stack_block/scene.usda"),
+        "rubric": Rubric(
+            criteria=[
+                checkers.reach("yellow_block", threshold=0.02),
+                (checkers.lift("yellow_block", threshold=0.04), [0]),
+                checkers.reach("green_block", threshold=0.02),
+                (checkers.is_within_xy("yellow_block", "green_block", percent_threshold=0.8), [1]),
             ]
         ),
     },

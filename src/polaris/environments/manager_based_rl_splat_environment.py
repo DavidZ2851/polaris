@@ -217,6 +217,7 @@ class ManagerBasedRLSplatEnv(ManagerBasedRLEnv):
                 else:
                     new_img = np.where(mask, sim_img, og_img)
                     rgb[cam] = new_img
+                rgb[f"{cam}_depth"] = mask_and_rgb[cam]["depth"]
         else:
             rgb = {}
             for cam in self.scene.sensors:
@@ -224,6 +225,7 @@ class ManagerBasedRLSplatEnv(ManagerBasedRLEnv):
                     rgb[cam] = (
                         self.scene[cam].data.output["rgb"][0].detach().cpu().numpy()
                     )
+                    rgb[f"{cam}_depth"] = self.scene[cam].data.output["distance_to_image_plane"][0].detach().cpu().numpy()
         return rgb
 
     def setup_splat_world_and_robot_views(self):
@@ -298,8 +300,8 @@ class ManagerBasedRLSplatEnv(ManagerBasedRLEnv):
             )
             img = base_cam.data.output["rgb"][0].detach().cpu().numpy()
             mask = np.where(mask >= 2, 1, 0)
-
-            ret[cam] = {"rgb": img, "mask": mask}
+            depth = base_cam.data.output["distance_to_image_plane"][0].detach().cpu().numpy()  # (H, W, 1)
+            ret[cam] = {"rgb": img, "mask": mask, "depth": depth}
 
         return ret
 

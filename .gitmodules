@@ -20,3 +20,6 @@
 	path = src/RoboGen-sim2real
 	url = https://github.com/yufeiwang63/RoboGen-sim2real.git
 	branch = articubot_multitask
+[submodule "src/Point-Policy"]
+	path = src/Point-Policy
+	url = https://github.com/DavidZ2851/Point-Policy.git
