@@ -208,7 +208,7 @@ class SceneCfg(InteractiveSceneCfg):
             prim_path="{ENV_REGEX_NS}/scene/viz_cam",
             height=720,
             width=1280,
-            data_types=["rgb", "semantic_segmentation"],
+            data_types=["rgb", "semantic_segmentation", "distance_to_image_plane"],
             colorize_semantic_segmentation=False,
             spawn=sim_utils.PinholeCameraCfg(
                 focal_length=1.0476,
