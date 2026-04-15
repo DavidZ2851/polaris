@@ -6,6 +6,7 @@ import torch
 import av
 
 from polaris.utils_.vis_utils import debug_plot
+from polaris.utils_.transform_utils import compute_delta_actions_robomimic
 
 from scipy.ndimage import distance_transform_edt
 
@@ -142,6 +143,9 @@ class ObsRecorder:
             gripper_pcd  = torch.cat([o["policy"]["gripper_pcd"] for o in all_obs]).cpu().numpy() # (T, 4, 3)
             goal_gripper_pcd     = torch.cat([o["policy"]["goal_gripper_pcd"] for o in all_obs]).cpu().numpy() # (T, 4, 3)
 
+            gripper_width = torch.cat([o["policy"]["gripper_width"] for o in all_obs]).cpu().numpy() # (T, 1)
+
+            delta_action = compute_delta_actions_robomimic(states_ee, action_ee) # (T-1, 7)
             
             np.savez(
                 os.path.join(ep_dir, "trajectory.npz"),
@@ -151,6 +155,8 @@ class ObsRecorder:
                 action_joint   = action_joint.astype(np.float32),
                 gripper_pcd  = gripper_pcd.astype(np.float32),
                 goal_gripper_pcd     = goal_gripper_pcd.astype(np.float32),
+                gripper_width  = gripper_width.astype(np.float32),
+                delta_action = delta_action.astype(np.float32),
 
             )
 

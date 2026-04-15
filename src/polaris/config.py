@@ -47,7 +47,7 @@ class PolicyArgs:
 
 
 @dataclass
-class EvalArgs:
+class evEvalArgs:
     """Evaluation configuration."""
 
     policy: PolicyArgs  # Policy arguments
