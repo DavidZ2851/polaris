@@ -1,6 +1,18 @@
 import numpy as np
 from scipy.spatial.transform import Rotation
 import torch
+import random
+
+def set_seed(seed: int):
+    """Set seed for reproducibility."""
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    # Optional: for deterministic behavior (may slow down)
+    # torch.backends.cudnn.deterministic = True
+    # torch.backends.cudnn.benchmark = False
+
 
 def _sample_from_zones(zones: list) -> float:
     """Randomly pick one zone from a list of [min, max] pairs, then sample within it."""

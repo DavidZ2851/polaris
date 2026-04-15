@@ -15,9 +15,10 @@ from isaaclab.app import AppLauncher
 
 from polaris.config import EvalArgs
 import numpy as np
-from polaris.utils_.eval_utils import randomize_object_poses
+from polaris.utils_.eval_utils import randomize_object_poses, set_seed
 
 def main(eval_args: EvalArgs):
+    set_seed(eval_args.seed)
     # This must be done before importing anything from IsaacLab
     # Inside main function to avoid launching IsaacLab in global scope
     # >>>> Isaac Sim App Launcher <<<<

@@ -47,7 +47,7 @@ class PolicyArgs:
 
 
 @dataclass
-class EvalArgs:
+class evEvalArgs:
     """Evaluation configuration."""
 
     policy: PolicyArgs  # Policy arguments
@@ -62,6 +62,7 @@ class EvalArgs:
     device: str = "cuda:0"
     max_episode_length: int = 450 # max_episode_length = episode_length_s / (dt * decimation)
     tqdm_position: int = 0
+    seed: int = 42
 
 
 @dataclass

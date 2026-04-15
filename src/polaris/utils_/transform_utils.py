@@ -1,5 +1,6 @@
 import numpy as np
 import robosuite.utils.transform_utils as T
+from scipy.spatial.transform import Rotation as R
 
 MAX_GRIPPER_WIDTH = 0.05
 
@@ -73,35 +74,130 @@ def clip_delta_action(delta_pos: np.array, delta_local_rot: np.array, max_dpos: 
 
     return delta_pos_clipped, delta_local_rot_clipped
 
-def compute_delta_action(state: np.ndarray, target_pos: np.ndarray, clip_action: bool = False) -> np.ndarray:
+
+def compute_delta_actions_smith(states_ee: np.ndarray, actions_ee: np.ndarray, clip_action: bool = False) -> np.ndarray:
     """
+    THIS IS FOR SMITH data!!!!!
+    
     Args:
-        state      (8,)   [pos(3) | quat_wxyz(4) | gripper(1)]
-        abs_action (8,)   [pos(3) | quat_wxyz(4) | gripper(1)]
+        states_ee  (T, 8)   [pos(3) | quat_wxyz(4) | gripper(1)]
+        actions_ee (T-1, 8) [pos(3) | quat_wxyz(4) | gripper(1)]  - target poses
 
     Returns:
-        delta (10,)  [delta_pos(3) | delta_rot6d(6) | gripper(1) normalized (-0.01, 0.01)]
+        deltas (T-1, 10)  [delta_pos(3) | delta_rot6d(6) | gripper(1) normalized (-0.01, 0.01)]
     """
+    T = actions_ee.shape[0]
+    
     # --- delta pos (base frame) ---
-    delta_pos = target_pos[:3] - state[:3]
+    delta_pos = actions_ee[:, :3] - states_ee[:T, :3]  # (T-1, 3)
 
     # --- delta rot (EEF local frame) ---
-    # state quat is wxyz → convert to xyzw for T.quat2mat
-   
-    cur_quat_xyzw    = np.array([state[4],      state[5],      state[6],      state[3]])
-    action_quat_xyzw = np.array([target_pos[4], target_pos[5], target_pos[6], target_pos[3]])
+    # Convert wxyz to xyzw
+    cur_quat_xyzw = states_ee[:T, [4, 5, 6, 3]]      # (T-1, 4)
+    action_quat_xyzw = actions_ee[:, [4, 5, 6, 3]]           # (T-1, 4)
 
-    cur_rot    = T.quat2mat(cur_quat_xyzw)       # (3, 3) 
-    action_rot = T.quat2mat(action_quat_xyzw)    # (3, 3) 
+    # Compute rotation matrices
+    cur_rot = np.array([T.quat2mat(q) for q in cur_quat_xyzw])       # (T-1, 3, 3)
+    action_rot = np.array([T.quat2mat(q) for q in action_quat_xyzw]) # (T-1, 3, 3)
 
-    # local frame: cur_rot = delta_local_rot @ target_pos
-    delta_local_rot = cur_rot.T @ action_rot
+    # Local frame delta: cur_rot.T @ action_rot
+    delta_local_rot = np.einsum('nij,njk->nik', cur_rot.transpose(0, 2, 1), action_rot)  # (T-1, 3, 3)
     
     if clip_action:
-        delta_pos, delta_local_rot = clip_delta_action(delta_pos, delta_local_rot)
-    delta_rot_6d = rotation_transfer_matrix_to_6D(delta_local_rot).reshape(-1).astype(np.float32)
+        delta_pos_list = []
+        delta_local_rot_list = []
+        for i in range(T):
+            dp, dr = clip_delta_action(delta_pos[i], delta_local_rot[i])
+            delta_pos_list.append(dp)
+            delta_local_rot_list.append(dr)
+        delta_pos = np.stack(delta_pos_list, axis=0)
+        delta_local_rot = np.stack(delta_local_rot_list, axis=0)
+    
+    # Convert to 6D rotation
+    delta_rot_6d = np.array([rotation_transfer_matrix_to_6D(r).reshape(-1) for r in delta_local_rot])  # (T-1, 6)
 
     # --- normalized gripper to SMITH dataset ---
-    gripper_normalized = -0.01 if target_pos[-1] > MAX_GRIPPER_WIDTH / 2 else 0.01
+    gripper_normalized = np.where(actions_ee[:, -1] > MAX_GRIPPER_WIDTH / 2, -0.01, 0.01)  # (T-1,)
 
-    return np.concatenate([delta_pos, delta_rot_6d, [gripper_normalized]]).astype(np.float32)  # (10,)
+    return np.concatenate([delta_pos, delta_rot_6d, gripper_normalized[:, None]], axis=1).astype(np.float32)  # (T-1, 10)
+
+
+def quat_to_rot_matrix_batch(quat_wxyz):
+    """
+    Convert quaternions (wxyz) to rotation matrices.
+    
+    Args:
+        quat_wxyz: (N, 4) quaternions in [w, x, y, z] format
+    
+    Returns:
+        (N, 3, 3) rotation matrices
+    """
+    # scipy uses xyzw format
+    quat_xyzw = quat_wxyz[:, [1, 2, 3, 0]]
+    return R.from_quat(quat_xyzw).as_matrix()
+
+
+def rot_matrix_to_axis_angle_batch(rot_mat):
+    """
+    Convert rotation matrices to axis-angle representation.
+    
+    Args:
+        rot_mat: (N, 3, 3) rotation matrices
+    
+    Returns:
+        (N, 3) axis-angle vectors
+    """
+    return R.from_matrix(rot_mat).as_rotvec()
+
+
+def compute_delta_actions_robomimic(states_ee, actions_ee, max_dpos=0.05, max_drot=0.5):
+    """
+    THIS IS FOR ROBOMIMIC DATA !!!
+    
+    Args:
+        states_ee: (T, 8) = pos(3) + quat_wxyz(4) + gripper(1)
+        action_ee: (T-1, 8) = pos(3) + quat_wxyz(4) + gripper(1)
+        max_dpos: max position delta for normalization
+        max_drot: max rotation delta for normalization
+    
+    Returns:
+        actions: (T-1, 7) = delta_pos(3) + delta_axis_angle(3) + gripper(1)
+                 where gripper is normalized to [-1, +1]
+    """
+    T = actions_ee.shape[0]
+    
+    # Current states (T-1,)
+    curr_pos = states_ee[:T, :3]          # (T-1, 3)
+    curr_quat = states_ee[:T, 3:7]        # (T-1, 4) wxyz
+    curr_rot = quat_to_rot_matrix_batch(curr_quat)  # (T-1, 3, 3)
+    
+    # Target states
+    target_pos = actions_ee[:, :3]         # (T-1, 3)
+    target_quat = actions_ee[:, 3:7]       # (T-1, 4) wxyz
+    target_rot = quat_to_rot_matrix_batch(target_quat)  # (T-1, 3, 3)
+    target_gripper = actions_ee[:, -1]     # (T-1,) 0=open, 1=close
+    
+    # Delta position (normalized)
+    delta_pos = target_pos - curr_pos     # (T-1, 3)
+    delta_pos = np.clip(delta_pos / max_dpos, -1., 1.)
+    
+    # Delta rotation: delta_rot @ curr_rot = target_rot
+    # So: delta_rot = target_rot @ curr_rot.T
+    curr_rot_T = curr_rot.transpose(0, 2, 1)  # (T-1, 3, 3)
+    delta_rot_mat = np.einsum('nij,njk->nik', target_rot, curr_rot_T)  # (T-1, 3, 3)
+    
+    # Convert to axis-angle (normalized)
+    delta_axis_angle = rot_matrix_to_axis_angle_batch(delta_rot_mat)  # (T-1, 3)
+    delta_axis_angle = np.clip(delta_axis_angle / max_drot, -1., 1.)
+    
+    # Gripper: normalize from [0,1] to [-1,+1] open close
+    gripper_action = target_gripper * 2.0 - 1.0  # (T-1,)
+    
+    # Concatenate
+    actions = np.concatenate([
+        delta_pos,                    # (T-1, 3)
+        delta_axis_angle,             # (T-1, 3)
+        gripper_action[:, None]       # (T-1, 1)
+    ], axis=1)
+    
+    return actions.astype(np.float32)  # (T-1, 7)
