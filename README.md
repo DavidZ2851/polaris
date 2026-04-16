@@ -1,3 +1,7 @@
+> **Human2Robot Benchmark users:** see [docs/human2robot_benchmark/README.md](docs/human2robot_benchmark/README.md) for dataset generation, environment setup, and policy evaluation instructions.
+
+---
+
 <img src="docs/images/Teaser Figure.png">
 
 ---

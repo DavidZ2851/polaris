@@ -50,7 +50,7 @@ def rot6d_to_quat_wxyz(rot6d: np.ndarray) -> np.ndarray:
     return np.array([xyzw[3], xyzw[0], xyzw[1], xyzw[2]], dtype=np.float32)  # wxyz
 
 
-@InferenceClient.register(client_name="AMPLIFY_FULLRES")
+@InferenceClient.register(client_name="AMPLIFY")
 class AMPLIFYFullResClient(InferenceClient):
     """
     Client for a full-resolution AMPLIFY variant that accepts 240×426 images directly
@@ -100,7 +100,7 @@ class AMPLIFYFullResClient(InferenceClient):
         context = zmq.Context()
         self.socket = context.socket(zmq.REQ)
         self.socket.connect(f"tcp://{host}:{port}")
-        print(f"Connected to AMPLIFY_FULLRES server at {host}:{port}")
+        print(f"Connected to AMPLIFY server at {host}:{port}")
         print(f"Camera mapping: {self.cam_keys[0]} → front, {self.cam_keys[1]} → left")
         print(f"Image size: {self.image_h}×{self.image_w}")
 
