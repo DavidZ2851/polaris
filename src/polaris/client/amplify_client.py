@@ -5,14 +5,14 @@ import zmq
 import torch
 from scipy.spatial.transform import Rotation
 
-from polaris.policy.abstract_client import InferenceClient
+from polaris.client.abstract_client import InferenceClient
 from polaris.config import PolicyArgs
 
 DEVICE = "cuda:0"
 
 # Default model input size — overridden at runtime from checkpoint config if policy_path is provided
-_DEFAULT_IMAGE_H = 128
-_DEFAULT_IMAGE_W = 128
+_DEFAULT_IMAGE_H = 240
+_DEFAULT_IMAGE_W = 426
 
 # Visualization output resolution — each view at native camera resolution, two views stitched side by side
 VIZ_H = 240
@@ -26,7 +26,7 @@ def _read_img_shape_from_ckpt(ckpt_path: str):
         img_shape = ckpt["config"]["motion_tokenizer_cfg"]["img_shape"]
         return int(img_shape[0]), int(img_shape[1])
     except Exception as e:
-        print(f"[AMPLIFYClient] Could not read img_shape from ckpt ({e}), using default {_DEFAULT_IMAGE_H}×{_DEFAULT_IMAGE_W}")
+        print(f"[AMPLIFYFullResClient] Could not read img_shape from ckpt ({e}), using default {_DEFAULT_IMAGE_H}×{_DEFAULT_IMAGE_W}")
         return None
 
 
@@ -50,19 +50,18 @@ def rot6d_to_quat_wxyz(rot6d: np.ndarray) -> np.ndarray:
     return np.array([xyzw[3], xyzw[0], xyzw[1], xyzw[2]], dtype=np.float32)  # wxyz
 
 
-@InferenceClient.register(client_name="AMPLIFY")
-class AMPLIFYClient(InferenceClient):
+@InferenceClient.register(client_name="AMPLIFY_FULLRES")
+class AMPLIFYFullResClient(InferenceClient):
     """
-    Client for the AMPLIFY policy served by amplify_server.py.
+    Client for a full-resolution AMPLIFY variant that accepts 240×426 images directly
+    (no resize to 128×128).
 
     Policy input  (sent to server):
-        image:   (v=2, 128, 128, 3) float32 [0, 1]
+        image:   (v=2, 240, 426, 3) float32 [0, 1]
         proprio: (10,) float32 = pos(3) + rot6d(6) + gripper(1)
-                 Derived from obs["policy"]["ee_pose"] (pos + quat_wxyz + gripper):
-                 quat_wxyz → xyzw → rotation matrix → first two columns (rot6d).
 
     Policy output (received from server):
-        action_chunk: (action_horizon=16, 10) float32
+        action_chunk: (action_horizon, 10) float32
                       = pos(3) + rot6d(6) + gripper(1) in robot base frame,
                       denormalized back to original EEF pose space.
 
@@ -101,7 +100,7 @@ class AMPLIFYClient(InferenceClient):
         context = zmq.Context()
         self.socket = context.socket(zmq.REQ)
         self.socket.connect(f"tcp://{host}:{port}")
-        print(f"Connected to AMPLIFY server at {host}:{port}")
+        print(f"Connected to AMPLIFY_FULLRES server at {host}:{port}")
         print(f"Camera mapping: {self.cam_keys[0]} → front, {self.cam_keys[1]} → left")
         print(f"Image size: {self.image_h}×{self.image_w}")
 
@@ -139,7 +138,7 @@ class AMPLIFYClient(InferenceClient):
             request = {"image": image, "proprio": proprio}
             self.socket.send(pickle.dumps(request))
             self.last_response = pickle.loads(self.socket.recv())
-            self.action_chunk = self.last_response["action_chunk"]  # (action_horizon, 8)
+            self.action_chunk = self.last_response["action_chunk"]  # (action_horizon, 10)
             self.actions_from_chunk_completed = 0
 
         action10 = self.action_chunk[self.actions_from_chunk_completed]  # (10,)
@@ -150,6 +149,7 @@ class AMPLIFYClient(InferenceClient):
         viz = None
         if return_viz:
             if "vis_frame" in self.last_response:
+                # Server returned track-overlaid image: (H, v*W, 3) uint8
                 viz = cv2.resize(self.last_response["vis_frame"], (VIZ_W, VIZ_H))
             else:
                 viz = cv2.resize(obs["splat"]["cam1"], (426, VIZ_H))
@@ -179,7 +179,7 @@ class AMPLIFYClient(InferenceClient):
         if ik_result.success.item():
             joint_pos = ik_result.solution.squeeze(0)[0, :7].cpu().numpy()  # (7,)
         else:
-            print("[AMPLIFYClient] IK failed, holding current joints")
+            print("[AMPLIFYFullResClient] IK failed, holding current joints")
             joint_pos = obs["policy"]["arm_joint_pos"][0].cpu().numpy()     # (7,)
 
         gripper_bin = 1.0 if gripper > 0.5 else 0.0
@@ -194,9 +194,10 @@ class AMPLIFYClient(InferenceClient):
         """
         images = []
         for key in self.cam_keys:
-            raw = obs["splat"][key]                                         # (H, W, 3) uint8
-            resized = cv2.resize(raw, (self.image_w, self.image_h))
-            images.append(resized)
+            raw = obs["splat"][key]  # (H, W, 3) uint8
+            if raw.shape[0] != self.image_h or raw.shape[1] != self.image_w:
+                raw = cv2.resize(raw, (self.image_w, self.image_h))
+            images.append(raw)
         image = np.stack(images, axis=0).astype(np.float32) / 255.0
 
         # ee_pose: pos(3) + quat_wxyz(4) + gripper(1) from simulator

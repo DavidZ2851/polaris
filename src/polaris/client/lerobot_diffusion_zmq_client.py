@@ -2,7 +2,7 @@ import pickle
 import numpy as np
 import zmq
 
-from polaris.policy.abstract_client import InferenceClient
+from polaris.client.abstract_client import InferenceClient
 from polaris.config import PolicyArgs
 
 

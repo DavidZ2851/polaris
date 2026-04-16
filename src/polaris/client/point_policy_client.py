@@ -8,7 +8,7 @@ import msgpack
 import msgpack_numpy as m
 m.patch()
 
-from polaris.policy.abstract_client import InferenceClient, PolicyArgs
+from polaris.client.abstract_client import InferenceClient, PolicyArgs
 from polaris.utils_.planner_utils import setup_curobo
 import time
 

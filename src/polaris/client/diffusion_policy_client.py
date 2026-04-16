@@ -6,7 +6,7 @@ import torch
 
 import robosuite.utils.transform_utils as T
 
-from polaris.policy.abstract_client import InferenceClient
+from polaris.client.abstract_client import InferenceClient
 from polaris.config import PolicyArgs
 from polaris.utils_.transform_utils import (
     state_quat_to_rot6d,

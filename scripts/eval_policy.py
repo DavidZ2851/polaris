@@ -1,6 +1,6 @@
+import os
 import tyro
 import mediapy
-import os
 
 # import wandb
 import tqdm
@@ -14,10 +14,12 @@ from pathlib import Path
 from isaaclab.app import AppLauncher
 
 from polaris.config import EvalArgs
+from polaris.utils_.eval_utils import randomize_object_poses, set_seed
 import numpy as np
-from polaris.utils_.eval_utils import randomize_object_poses
+
 
 def main(eval_args: EvalArgs):
+    set_seed(eval_args.seed)
     # This must be done before importing anything from IsaacLab
     # Inside main function to avoid launching IsaacLab in global scope
     # >>>> Isaac Sim App Launcher <<<<
@@ -33,37 +35,32 @@ def main(eval_args: EvalArgs):
     from polaris.environments.manager_based_rl_splat_environment import (
         ManagerBasedRLSplatEnv,
     )
-    from polaris.utils import load_eval_initial_conditions, load_task_config   
-    from polaris.policy import InferenceClient
-    
+    from polaris.utils import load_eval_initial_conditions, load_task_config
+    from polaris.client import InferenceClient
+    # from real2simeval.autoscoring import TASK_TO_SUCCESS_CHECKER
+
     if eval_args.env_folder is None:
         eval_args.env_folder = os.path.dirname(gym.spec(eval_args.environment).kwargs["usd_file"])
 
-
     env_cfg = parse_env_cfg(
         eval_args.environment,
-        device=eval_args.device,
+        device="cuda",
         num_envs=1,
         use_fabric=True,
     )
-
-
-    env_cfg.episode_length_s = eval_args.max_episode_length * (env_cfg.sim.dt * env_cfg.decimation)
-
-    env: MangerBasedRLSplatEnv = gym.make(eval_args.environment, cfg=env_cfg,  robot_config = eval_args.robot)  # type: ignore
+    env: ManagerBasedRLSplatEnv = gym.make(eval_args.environment, cfg=env_cfg)  # type: ignore
 
     language_instruction, initial_conditions = load_eval_initial_conditions(
         usd=env.usd_file,
         initial_conditions_file=eval_args.initial_conditions_file,
         rollouts=eval_args.rollouts,
     )
-
-    calibration_path = os.path.join(eval_args.env_folder, "cam_calibration.json")
-    object_randomization, waypoints = load_task_config(
+    object_randomization, _ = load_task_config(
         os.path.join(eval_args.env_folder, "task_config.yaml")
     )
 
-    object_poses = randomize_object_poses(object_randomization, initial_conditions)[0]
+    # Randomise object poses
+    ic = randomize_object_poses(object_randomization, initial_conditions)[0]
 
     rollouts = eval_args.rollouts
     # Resume CSV logging
@@ -91,30 +88,25 @@ def main(eval_args: EvalArgs):
     policy_client: InferenceClient = InferenceClient.get_client(eval_args.policy)
 
     video = []
-    horizon = env.max_episode_length
-    bar = tqdm.tqdm(range(horizon), position=eval_args.tqdm_position)
+    horizon = eval_args.max_episode_length
+    bar = tqdm.tqdm(range(horizon))
     obs, info = env.reset(
-        object_positions=object_poses, expensive=True
+        object_positions=ic, expensive=True
     )
-    # action_human = torch.tensor([[ 0.0221,  0.0607, -0.0770, -2.3028,  0.0066,  2.3633, -0.0595,  0.0000]], device=eval_args.device)
-    # for i in range(10):
-    #     obs, rew, term, trunc, info = env.step(
-    #             torch.tensor(action_human, device=eval_args.device), expensive=True
-    #         )
-    policy_client.reset(obs)
-        
+    policy_client.reset()
+
     print(f" >>> Starting eval job from episode {episode + 1} of {rollouts} <<< ")
     while True:
-        
         action, viz = policy_client.infer(obs, language_instruction, return_viz=True)
         if viz is not None:
             video.append(viz)
         obs, rew, term, trunc, info = env.step(
-            torch.tensor(action, device=eval_args.device), expensive=True
+            torch.tensor(action).reshape(1, -1), expensive=True
         )
 
         bar.update(1)
         if term[0] or trunc[0] or bar.n >= horizon:
+            policy_client.reset()
 
             # Save video and metadata
             filename = run_folder / f"episode_{episode}.mp4"
@@ -136,12 +128,10 @@ def main(eval_args: EvalArgs):
             print(f"Episode {episode} finished. Episode length: {bar.n}")
             episode += 1
             bar = tqdm.tqdm(range(horizon))
-            object_poses = randomize_object_poses(object_randomization, initial_conditions)[0]
-            
+            ic = randomize_object_poses(object_randomization, initial_conditions)[0]
             obs, info = env.reset(
-                object_positions=object_poses, expensive=True
+                object_positions=ic, expensive = True
             )
-            policy_client.reset(obs)
 
             video = []
             if episode >= rollouts:
@@ -149,7 +139,6 @@ def main(eval_args: EvalArgs):
 
     env.close()
     simulation_app.close()
-    policy_client.shutdown()
 
 
 if __name__ == "__main__":

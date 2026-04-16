@@ -1,6 +1,6 @@
 import numpy as np
 from openpi_client import websocket_client_policy, image_tools
-from polaris.policy.abstract_client import InferenceClient, PolicyArgs
+from polaris.client.abstract_client import InferenceClient, PolicyArgs
 
 
 # Joint Position Client for DROID
