@@ -144,7 +144,7 @@ python scripts/eval_policy.py \
 
 ```bash
 /home/veraxiao/miniconda3/envs/amplify/bin/python \
-    src/polaris/policy/amplify_polaris/amplify/bundle_amplify.py \
+    src/polaris/policy/amplify/amplify/bundle_amplify.py \
     --mt_ckpt  /data/vxiao/benchmark_new/polaris/policy_ckpt/amplify_new/<folder>/motion.pt \
     --fd_ckpt  /data/vxiao/benchmark_new/polaris/policy_ckpt/amplify_new/<folder>/forward.pt \
     --id_ckpt  /data/vxiao/benchmark_new/polaris/policy_ckpt/amplify_new/<folder>/inverse.pt \
@@ -158,7 +158,7 @@ python scripts/eval_policy.py \
 cd ~/vxiao/human2robot/benchmark_new/polaris
 conda activate amplify
 /home/veraxiao/miniconda3/envs/amplify/bin/python src/polaris/server/amplify_server.py \
-    --amplify_root /home/veraxiao/vxiao/human2robot/benchmark_new/policy/amplify_polaris \
+    --amplify_root /home/veraxiao/vxiao/human2robot/benchmark_new/polaris/src/polaris/policy/amplify \
     --ckpt_path /data/vxiao/benchmark_new/polaris/policy_ckpt/amplify_new/<folder>/amplify.pt \
     --text_emb  /data/vxiao/benchmark_new/polaris/policy_ckpt/amplify_new/pick_mug_text_emb.npy \
     --port 5557 \
