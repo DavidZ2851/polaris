@@ -4,9 +4,9 @@ Run this in the robodiff conda env BEFORE running eval in the polaris uv env.
 
 Usage:
     conda activate robodiff
-    cd /home/veraxiao/vxiao/human2robot/benchmark_new/diffusion_policy
-    python ../polaris/scripts/diffusion_policy_server.py \
-        --ckpt_path ../polaris/policy_ckpt/phantom/epoch=0150-val_loss=0.061.ckpt \
+    cd ~/vxiao/human2robot/benchmark_new/polaris
+    python src/polaris/server/diffusion_policy_server.py \
+        --ckpt_path <path/to/checkpoint.ckpt> \
         --port 5556
 """
 
@@ -22,7 +22,7 @@ import dill
 from collections import deque
 
 # Make sure diffusion_policy is importable
-ROOT_DIR = str(pathlib.Path(__file__).parent.parent.parent / "diffusion_policy")
+ROOT_DIR = str(pathlib.Path(__file__).parent.parent / "policy" / "diffusion_policy")
 sys.path.insert(0, ROOT_DIR)
 
 # Stub out wandb before importing the workspace — the server doesn't need it
