@@ -60,8 +60,9 @@ class EvalArgs:
     robot: str = "franka_robotiq_2f_85"
     env_folder: str | None = None
     device: str = "cuda:0"
-    max_episode_length: int = 450 # max_episode_length = episode_length_s / (dt * decimation)
+    max_episode_length: int = 300 # max_episode_length = episode_length_s / (dt * decimation)
     tqdm_position: int = 0
+    seed: int = 42
 
 
 @dataclass

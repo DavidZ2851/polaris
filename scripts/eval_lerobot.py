@@ -14,11 +14,12 @@ from pathlib import Path
 from isaaclab.app import AppLauncher
 
 from polaris.config import EvalArgs
-from polaris.utils_.eval_utils import randomize_object_poses
+from polaris.utils_.eval_utils import randomize_object_poses, set_seed
 import numpy as np
 
 
 def main(eval_args: EvalArgs):
+    set_seed(eval_args.seed)
     # This must be done before importing anything from IsaacLab
     # Inside main function to avoid launching IsaacLab in global scope
     # >>>> Isaac Sim App Launcher <<<<
@@ -87,7 +88,7 @@ def main(eval_args: EvalArgs):
     policy_client: InferenceClient = InferenceClient.get_client(eval_args.policy)
 
     video = []
-    horizon = env.max_episode_length
+    horizon = eval_args.max_episode_length
     bar = tqdm.tqdm(range(horizon))
     obs, info = env.reset(
         object_positions=ic, expensive=True
