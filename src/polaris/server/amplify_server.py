@@ -21,7 +21,7 @@ Or with a pre-bundled AMPLIFY checkpoint:
         --port 5557
 
 Request format  (pickle):
-    {"image": np.ndarray (v, 128, 128, 3) float32 [0,1],
+    {"image": np.ndarray (v, 240, 426, 3) float32 [0,1],
      "proprio": np.ndarray (8,) float32}
     or {"reset": True}
 
@@ -45,8 +45,10 @@ _pre = argparse.ArgumentParser(add_help=False)
 _pre.add_argument("--amplify_root", type=str, default=None)
 _pre_args, _ = _pre.parse_known_args()
 
-ROOT_DIR = _pre_args.amplify_root or str(pathlib.Path(__file__).parent.parent.parent / "AMPLIFY")
+ROOT_DIR = _pre_args.amplify_root or str(pathlib.Path(__file__).parent.parent / "policy" / "amplify")
+POLARIS_SRC = str(pathlib.Path(__file__).parent.parent.parent)  # .../polaris/src
 sys.path.insert(0, ROOT_DIR)
+sys.path.insert(0, POLARIS_SRC)
 
 from amplify import AMPLIFY
 from amplify.utils.kp_utils.query_utils import grid_queries_nonsquare
@@ -153,12 +155,12 @@ def main():
             socket.send(pickle.dumps({"status": "ok"}))
             continue
 
-        # image: (v, 128, 128, 3) float32 [0,1]
+        # image: (v, 240, 426, 3) float32 [0,1]
         # proprio: (10,) float32 — pos(3) + rot6d(6) + gripper(1)
-        image_np  = request["image"]    # (v, 128, 128, 3)
+        image_np  = request["image"]    # (v, 240, 426, 3)
         proprio_np = request["proprio"]  # (10,)
 
-        image_t  = torch.from_numpy(image_np).float().unsqueeze(0).to("cuda:0")    # (1, v, 128, 128, 3)
+        image_t  = torch.from_numpy(image_np).float().unsqueeze(0).to("cuda:0")    # (1, v, 240, 426, 3)
         proprio_t = torch.from_numpy(proprio_np).float().unsqueeze(0).to("cuda:0") # (1, 10)
 
         # text_emb broadcast to batch size 1

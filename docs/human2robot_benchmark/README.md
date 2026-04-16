@@ -107,6 +107,16 @@ Clients are registered by name and selected via `--policy.client`:
 | `LeRobotDiffusion` | `src/polaris/client/lerobot_diffusion_zmq_client.py` |
 | `DroidJointPos` | `src/polaris/client/droid_jointpos_client.py` |
 
+### Camera Usage per Policy
+
+Camera names in `obs["splat"]` come from the USD scene prim names (e.g. `cam0`, `cam1`, `wrist_cam`).
+
+| Policy | Cameras used | Notes |
+|--------|-------------|-------|
+| `DiffusionPolicy` | `cam1` | Front camera only (1 view, `(H, W, 3)`) |
+| `AMPLIFY` | `cam0`, `cam1` | Two views stacked as `(2, H, W, 3)`; `cam0` = front, `cam1` = left |
+| `DroidJointPos` | `external_cam`, `wrist_cam` | Uses sim camera names directly |
+
 ---
 
 ### Example: Diffusion Policy
@@ -114,10 +124,10 @@ Clients are registered by name and selected via `--policy.client`:
 **Step 1 — Start the server** (in a separate terminal, `robodiff` env):
 
 ```bash
-cd ~/vxiao/human2robot/benchmark_new/diffusion_policy
+cd ~/vxiao/human2robot/benchmark_new/polaris
 conda activate robodiff
-python ../polaris/src/polaris/server/diffusion_policy_server.py \
-    --ckpt_path ../polaris/policy_ckpt/diffusion_policy/red_mug/new_camera_calib/human40_robot40.ckpt \
+python src/polaris/server/diffusion_policy_server.py \
+    --ckpt_path policy_ckpt/diffusion_policy/red_mug/new_camera_calib/human40_robot40.ckpt \
     --port 5557
 ```
 
@@ -143,8 +153,7 @@ python scripts/eval_policy.py \
 **Step 1 — Bundle checkpoint** (if not already bundled):
 
 ```bash
-/home/veraxiao/miniconda3/envs/amplify/bin/python \
-    src/polaris/policy/amplify/amplify/bundle_amplify.py \
+python src/polaris/policy/amplify/amplify/bundle_amplify.py \
     --mt_ckpt  /data/vxiao/benchmark_new/polaris/policy_ckpt/amplify_new/<folder>/motion.pt \
     --fd_ckpt  /data/vxiao/benchmark_new/polaris/policy_ckpt/amplify_new/<folder>/forward.pt \
     --id_ckpt  /data/vxiao/benchmark_new/polaris/policy_ckpt/amplify_new/<folder>/inverse.pt \
@@ -157,8 +166,7 @@ python scripts/eval_policy.py \
 ```bash
 cd ~/vxiao/human2robot/benchmark_new/polaris
 conda activate amplify
-/home/veraxiao/miniconda3/envs/amplify/bin/python src/polaris/server/amplify_server.py \
-    --amplify_root /home/veraxiao/vxiao/human2robot/benchmark_new/polaris/src/polaris/policy/amplify \
+python src/polaris/server/amplify_server.py \
     --ckpt_path /data/vxiao/benchmark_new/polaris/policy_ckpt/amplify_new/<folder>/amplify.pt \
     --text_emb  /data/vxiao/benchmark_new/polaris/policy_ckpt/amplify_new/pick_mug_text_emb.npy \
     --port 5557 \
