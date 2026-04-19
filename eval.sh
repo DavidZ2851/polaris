@@ -34,23 +34,23 @@
 
 CUDA_LAUNCH_BLOCKING=1 CUDA_VISIBLE_DEVICES=0 python scripts/eval_point_policy.py \
     --environment DROID-PutRedCup-no-curtain \
-    --run-folder runs/point_policy_human_25_robot_15 \
+    --run-folder runs/point_policy_robot_50 \
     --policy.client point_policy \
     --policy.port 8765 \
     --rollouts 30 \
     --max-episode-length 200 \
     --tqdm-position 0 \
-    --device "cuda:0" &
+    --device "cuda:0" # &
 
-CUDA_VISIBLE_DEVICES=1 python scripts/eval_point_policy.py \
-    --environment DROID-PutRedCup-no-curtain \
-    --run-folder runs/point_policy_human_35_robot_15 \
-    --policy.client point_policy \
-    --policy.port 8766 \
-    --rollouts 30 \
-    --max-episode-length 200 \
-    --tqdm-position 1 \
-    --device "cuda:0"  &
+# CUDA_VISIBLE_DEVICES=1 python scripts/eval_point_policy.py \
+#     --environment DROID-PutRedCup-no-curtain \
+#     --run-folder runs/point_policy_robot_200 \
+#     --policy.client point_policy \
+#     --policy.port 8766 \
+#     --rollouts 30 \
+#     --max-episode-length 200 \
+#     --tqdm-position 1 \
+#     --device "cuda:0"  &
 
 wait
 
