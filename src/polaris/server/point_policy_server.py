@@ -135,7 +135,7 @@ class PointPolicyServer:
 
         self.prev_gripper_state = -1
 
-    def reset(self, obs: dict, return_viz: bool = False):
+    def reset(self):
         self.workspace.agent.buffer_reset()
         self.step = 0
         self.prev_gripper_state = -1
@@ -144,7 +144,7 @@ class PointPolicyServer:
         self._track_pts = {}
         self.points_class.reset_episode()
 
-        self.process_point(obs)
+        # self.process_point(obs)
 
     @torch.no_grad()
     def infer(self, obs: dict, return_viz: bool = False) -> np.ndarray:

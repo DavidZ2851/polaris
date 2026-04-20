@@ -38,6 +38,7 @@ dependencies = [
     "msgpack",
     #"torch>=2.9.0", # Change here for different CUDA version
     #"torchvision>=0.24.0", # Change here for different CUDA version
+    "pyzmq>=27.1.0",
 ]
 
 [project.scripts]
