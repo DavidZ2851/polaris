@@ -91,12 +91,13 @@ def main(data_args: DataArgs):
         obs, info, done = planner.execute_waypoints(obs, object_poses=object_poses)
 
         # Check success
+        print(info)
         if is_success(info):
             print(f"\n  ✓ SUCCESS  (episode {num_success + 1}/{data_args.num_episodes})")
             num_success += 1
             recorder.ep_idx += 1
         else:
-            reason = "planning/execution failure" if not done else "env success=False"
+            reason = "Metric not satisfied" if not done else "Debugging"
             print(f"\n  ✗ FAILED  ({reason})")
 
     print(f"\nCollection complete: {num_success} successes in {num_attempts} attempts.")

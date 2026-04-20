@@ -186,3 +186,128 @@ def get_bbox(body_prim: Usd.Prim, pos=None, quat=None, scalar_first=False):
     new_centroid = additional_transform.Transform(transformed_centroid)
 
     return new_corners, new_centroid
+
+def is_close_xy(object1, object2, xy_dist_threshold = 0.05):
+    """
+    Check if object1 is close to object2.
+    """
+
+    def checker(env):
+        # ee should be open
+        stage = get_context().get_stage()
+
+        obj1_prim = stage.GetPrimAtPath(f"/World/envs/env_0/scene/{object1}")
+        obj2_prim = stage.GetPrimAtPath(f"/World/envs/env_0/scene/{object2}")
+        obj1_pos = env.scene[object1].data.root_pos_w[0]
+        obj2_pos = env.scene[object2].data.root_pos_w[0]
+        obj1_quat = env.scene[object1].data.root_quat_w[0]
+        obj2_quat = env.scene[object2].data.root_quat_w[0]
+
+        _, obj1_centroid = get_bbox(obj1_prim, pos=obj1_pos, quat=obj1_quat)
+        _, obj2_centroid = get_bbox(obj2_prim, pos=obj2_pos, quat=obj2_quat)
+
+        obj1_centroid = np.array(obj1_centroid)
+        obj2_centroid = np.array(obj2_centroid)
+
+        # Compute XY-plane distance between centroids
+        xy_distance = np.linalg.norm(obj1_centroid[:2] - obj2_centroid[:2])
+        # print("xy_dist", xy_distance)
+        # print(xy_distance <= xy_dist_threshold)
+
+        return xy_distance <= xy_dist_threshold
+
+    return checker
+
+
+def is_inserted(ring_obj, peg_obj, xy_threshold=0.01, z_threshold=0.02, 
+                stable_steps=5, vel_threshold=0.005):
+    """
+    Check if ring_obj (e.g., donut) is inserted onto peg_obj (e.g., bar).
+    Conditions:
+      1. Ring and peg centroids are aligned in XY within xy_threshold
+      2. Ring has dropped below peg by at least z_threshold
+      3. Ring is stabilized (low velocity for stable_steps consecutive steps)
+    """
+    # State tracked across calls
+    state = {"stable_count": 0, "last_pos": None}
+
+    def checker(env):
+        ring_pos = env.scene[ring_obj].data.root_pos_w[0]
+        peg_pos = env.scene[peg_obj].data.root_pos_w[0]
+
+        # ── Option 1: velocity-based (faster, preferred) ──────────
+        ring_vel = env.scene[ring_obj].data.root_lin_vel_w[0]
+        speed = torch.norm(ring_vel)
+        is_stable = speed < vel_threshold
+
+        if is_stable:
+            state["stable_count"] += 1
+        else:
+            state["stable_count"] = 0  # reset if moving again
+
+        if state["stable_count"] < stable_steps:
+            return False  # not yet stable
+
+        # ── Insertion geometry check ───────────────────────────────
+        xy_dist = torch.norm(ring_pos[:2] - peg_pos[:2])
+        ring_z = ring_pos[2]
+        peg_z = peg_pos[2]
+        z_dist = torch.abs(ring_z - peg_z)
+
+        inserted = ring_z < peg_z and z_dist < z_threshold and xy_dist < xy_threshold
+
+        return inserted
+
+    return checker
+
+def is_hung(obj, peg, xy_threshold=0.01, z_threshold=0.02, 
+                stable_steps=5, vel_threshold=0.005, open_finger_threshold=0.1):
+    """
+    Check if ring_obj (e.g., donut) is inserted onto peg_obj (e.g., bar).
+    Conditions:
+      1. Ring and peg centroids are aligned in XY within xy_threshold
+      2. Ring has dropped below peg by at least z_threshold
+      3. Ring is stabilized (low velocity for stable_steps consecutive steps)
+    """
+    # State tracked across calls
+    state = {"stable_count": 0, "last_pos": None}
+
+    def checker(env):
+        obj_pos = env.scene[obj].data.root_pos_w[0]
+        peg_pos = env.scene[peg].data.root_pos_w[0]
+
+        # ── Option 1: velocity-based (faster, preferred) ──────────
+        obj_vel = env.scene[obj].data.root_lin_vel_w[0]
+        speed = torch.norm(obj_vel)
+        is_stable = speed < vel_threshold
+
+        finger_joint = env.scene["robot"].data.joint_pos[0][
+            env.scene["robot"].data.joint_names.index("finger_joint")
+        ]
+        if finger_joint >= open_finger_threshold:
+            return False
+
+        print("stable", state["stable_count"] > stable_steps)
+
+        if is_stable:
+            state["stable_count"] += 1
+        else:
+            state["stable_count"] = 0  # reset if moving again
+
+        if state["stable_count"] < stable_steps:
+            return False  # not yet stable
+
+        xy_dist = torch.norm(obj_pos[:2] - peg_pos[:2])
+        obj_z = obj_pos[2]
+        peg_z = peg_pos[2]
+        z_dist = torch.abs(obj_z - peg_z)
+
+        hung = obj_z <= peg_z and xy_dist <= xy_threshold and z_dist <= z_threshold
+
+        print("is hung", hung)
+        print("obj_pos", obj_pos)
+        print("peg_pos", peg_pos)
+        
+        return hung
+
+    return checker

@@ -17,7 +17,6 @@ from polaris.config import EvalArgs
 from polaris.utils_.eval_utils import randomize_object_poses, set_seed
 import numpy as np
 
-
 def main(eval_args: EvalArgs):
     set_seed(eval_args.seed)
     # This must be done before importing anything from IsaacLab

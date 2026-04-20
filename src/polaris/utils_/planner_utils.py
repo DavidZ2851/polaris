@@ -182,7 +182,7 @@ class MotionPlanner:
     def add_obs(self, obs):
         self.recorder.add(obs)
 
-    def subgoal_gripper_state(self, obs, new_grasp: float, n_steps: int = 1):
+    def subgoal_gripper_state(self, obs, new_grasp: float, n_steps: int = 2):
         """Hold current arm joints and only change the gripper for n_steps."""
         joints = self.get_current_joints(obs)                     # (13,)
         arm_joints    = joints[:self.GRIPPER_JOINT_IDX]           # (7,)
@@ -268,6 +268,7 @@ class MotionPlanner:
 
         if is_success(info) or self.debug:
             self.recorder.save_episode()
+            return obs, info, True
 
         return obs, info, False
  

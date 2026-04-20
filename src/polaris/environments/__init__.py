@@ -195,3 +195,41 @@ gym.register(
         ),
     },
 )
+
+gym.register(
+    id="DROID-InsertDonut",
+    entry_point=ManagerBasedRLSplatEnv,
+    disable_env_checker=True,
+    order_enforce=False,
+    kwargs={
+        "env_cfg_entry_point": DroidCfg,
+        "usd_file": str(DATA_PATH / "insert_donut/scene.usda"),
+        "rubric": Rubric(
+            criteria=[
+                checkers.reach("blue_donut", threshold=0.2),
+                (checkers.lift("blue_donut", threshold=0.15), [0]),
+                (checkers.is_within_xy("blue_donut", "bar", percent_threshold=0.1, open_finger_threshold=2), [1]),
+                (checkers.is_inserted("blue_donut", "bar", xy_threshold=0.06, z_threshold=0.1), [2]),
+            ]
+        ),
+    },
+)
+
+gym.register(
+    id="DROID-HangMug",
+    entry_point=ManagerBasedRLSplatEnv,
+    disable_env_checker=True,
+    order_enforce=False,
+    kwargs={
+        "env_cfg_entry_point": DroidCfg,
+        "usd_file": str(DATA_PATH / "hang_mug/scene.usda"),
+        "rubric": Rubric(
+            criteria=[
+                checkers.reach("red_mug", threshold=0.2),
+                (checkers.lift("red_mug", threshold=0.05), [0]),
+                (checkers.is_close_xy("red_mug", "mug_tree", xy_dist_threshold=0.25), [1]),
+                (checkers.is_hung("red_mug", "mug_tree", xy_threshold=0.15, z_threshold=0.1, stable_steps=3, vel_threshold=0.05), [2]),
+            ]
+        ),
+    },
+)
