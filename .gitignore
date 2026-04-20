@@ -5,6 +5,8 @@ PolaRiS-datasets/
 PolaRiS-Hub/*
 !PolaRiS-Hub/put_red_cup_no_curtain/
 cam_calibration_alignment_adjustment/
+debug_data/
+scripts/eval_scripts/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

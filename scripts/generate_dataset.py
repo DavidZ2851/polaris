@@ -1,4 +1,5 @@
 import os
+import sys
 import tyro
 import argparse
 
@@ -23,6 +24,9 @@ def main(data_args: DataArgs):
     args_cli, _ = parser.parse_known_args()
     args_cli.enable_cameras = True
     args_cli.headless = data_args.headless
+    args_cli.gpu_id = data_args.gpu_id
+    # Force Vulkan renderer to use the same GPU (bypasses Xorg default GPU)
+    sys.argv += [f"--/renderer/activeGpu={data_args.gpu_id}"]
     app_launcher = AppLauncher(args_cli)
     simulation_app = app_launcher.app
 
@@ -40,9 +44,8 @@ def main(data_args: DataArgs):
     env: ManagerBasedRLSplatEnv = gym.make(data_args.environment, cfg=env_cfg, robot_config=data_args.robot)
 
     language_instruction, initial_conditions = load_eval_initial_conditions(env.usd_file)
-    object_randomization, waypoints = load_task_config(
-        os.path.join(data_args.env_folder, "task_config.yaml")
-    )
+    task_config_path = data_args.task_config or os.path.join(data_args.env_folder, "task_config.yaml")
+    object_randomization, waypoints = load_task_config(task_config_path)
 
     calibration_path = os.path.join(data_args.env_folder, "cam_calibration.json")
 
