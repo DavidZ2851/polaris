@@ -1,0 +1,25 @@
+[submodule "src/diff-surfel-rasterization/third_party/glm"]
+	path = src/diff-surfel-rasterization/third_party/glm
+	url = git@github.com:g-truc/glm.git
+[submodule "third_party/openpi"]
+	path = third_party/openpi
+	url = git@github.com:Physical-Intelligence/openpi.git
+[submodule "src/curobo"]
+	path = src/curobo
+	url = https://github.com/NVlabs/curobo.git
+[submodule "src/lerobot"]
+	path = src/lerobot
+	url = https://github.com/r-pad/lerobot.git
+[submodule "src/diff-gaussian-rasterization"]
+	path = src/diff-gaussian-rasterization
+	url = https://github.com/graphdeco-inria/diff-gaussian-rasterization
+[submodule "src/SMITH_on_mimicgen"]
+	path = src/SMITH_on_mimicgen
+	url = https://github.com/yufeiwang63/SMITH_on_mimicgen.git
+[submodule "src/RoboGen-sim2real"]
+	path = src/RoboGen-sim2real
+	url = https://github.com/yufeiwang63/RoboGen-sim2real.git
+	branch = articubot_multitask
+[submodule "src/Point-Policy"]
+	path = src/Point-Policy
+	url = https://github.com/DavidZ2851/Point-Policy.git
