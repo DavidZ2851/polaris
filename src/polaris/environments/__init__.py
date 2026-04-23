@@ -233,3 +233,21 @@ gym.register(
         ),
     },
 )
+
+gym.register(
+    id="DROID-PickPlaceToys",
+    entry_point=ManagerBasedRLSplatEnv,
+    disable_env_checker=True,
+    order_enforce=False,
+    kwargs={
+        "env_cfg_entry_point": DroidCfg,
+        "usd_file": str(DATA_PATH / "pick_place_toys/scene.usda"),
+        "rubric": Rubric(
+            criteria=[
+                checkers.is_within_xy("blue_toy_large", "pink_box", percent_threshold=1),
+                checkers.is_within_xy("orange_toy", "pink_box", percent_threshold=1),
+                checkers.is_within_xy("yellow_toy", "pink_box", percent_threshold=1),
+            ]
+        ),
+    },
+)

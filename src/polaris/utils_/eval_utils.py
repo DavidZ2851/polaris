@@ -19,13 +19,32 @@ def _sample_from_zones(zones: list) -> float:
     return np.random.uniform(zone[0], zone[1])     # sample within that zone
 
 
-def randomize_object_poses(randomization_setting: dict, initial_conditions: list) -> list:
+def randomize_object_poses(randomization_setting: dict, initial_conditions: list, min_distance: float = 0.05, max_retries: int = 100) -> list:
     result = dict(initial_conditions[0])
+    placed_positions = []  # Track (x, y, z) of newly placed objects only
 
     for obj, ranges in randomization_setting.items():
-        x = _sample_from_zones(ranges["x"])
-        y = _sample_from_zones(ranges["y"])
-        z = _sample_from_zones(ranges["z"])
+        for attempt in range(max_retries):
+            x = _sample_from_zones(ranges["x"])
+            y = _sample_from_zones(ranges["y"])
+            z = _sample_from_zones(ranges["z"])
+
+            # Check distance against all previously placed objects
+            too_close = any(
+                np.linalg.norm(np.array([x, y, z]) - np.array(pos)) < min_distance
+                for pos in placed_positions
+            )
+
+            if not too_close:
+                break
+        else:
+            raise RuntimeError(
+                f"Could not place '{obj}' at least {min_distance*100:.0f}cm away from "
+                f"other objects after {max_retries} attempts. "
+                f"Consider expanding the randomization zones."
+            )
+
+        placed_positions.append([x, y, z])
 
         # ori ranges are still flat [min, max] — keep as-is
         rx = np.random.uniform(*ranges.get("ori_x", [0, 0]))

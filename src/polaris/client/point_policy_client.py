@@ -41,11 +41,10 @@ class PointPolicyClient(InferenceClient):
         
         return joint_solution # (1, 8)
 
-    def reset(self, obs):
+    def reset(self):
         self.pred_action_chunk = None
         asyncio.run(self._send({
             "command": "reset",
-            "obs": self._serialize(self._extract_observation(obs)),
         }))
 
     def _serialize(self, v, _path=""):

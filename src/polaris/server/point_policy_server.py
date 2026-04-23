@@ -48,7 +48,7 @@ from robot_utils.franka.gripper_points import Tshift
 class Args:
     bc_weight: str
     port: int = 8765
-    config_path: str = "cfgs"
+    config_path: str = ""
     config_name: str = "config"
     overrides: List[str] = dataclasses.field(default_factory=list)
 
@@ -92,7 +92,8 @@ def draw_tracks(img, obj_2d, rob_2d):
 class PointPolicyServer:
     def __init__(self, args: Args):
         # mirror exactly what eval.py does
-        with hydra.initialize(config_path=args.config_path, version_base=None):
+        config_dir = str(pathlib.Path(ROOT_DIR) / (args.config_path or "cfgs"))
+        with hydra.initialize_config_dir(config_dir=config_dir, version_base=None):
             cfg = hydra.compose(
                 config_name=args.config_name,
                 overrides=args.overrides + [f"bc_weight={args.bc_weight}"],
@@ -115,7 +116,7 @@ class PointPolicyServer:
         self.step = 0
         logging.info("PointPolicy loaded.")
         
-        with open("cfgs/suite/points_cfg.yaml") as stream:
+        with open(str(pathlib.Path(ROOT_DIR) / "cfgs" / "suite" / "points_cfg.yaml")) as stream:
             try:
                 points_cfg = yaml.safe_load(stream)
             except yaml.YAMLError as exc:
@@ -135,7 +136,7 @@ class PointPolicyServer:
 
         self.prev_gripper_state = -1
 
-    def reset(self, obs: dict, return_viz: bool = False):
+    def reset(self):
         self.workspace.agent.buffer_reset()
         self.step = 0
         self.prev_gripper_state = -1
@@ -144,7 +145,7 @@ class PointPolicyServer:
         self._track_pts = {}
         self.points_class.reset_episode()
 
-        self.process_point(obs)
+        # self.process_point(obs)
 
     @torch.no_grad()
     def infer(self, obs: dict, return_viz: bool = False) -> np.ndarray:
@@ -315,7 +316,7 @@ class PointPolicyServer:
             gripper_state = self.prev_gripper_state
         self.prev_gripper_state = gripper_state
 
-        gripper_state = np.array([gripper_state])
+        gripper_state = gripper_state
         return gripper_state
 
 def main(args: Args):
@@ -328,8 +329,7 @@ def main(args: Args):
             command = data.get("command", "infer")
 
             if command == "reset":
-                obs = data["obs"]
-                server.reset(obs)
+                server.reset()
                 await websocket.send(msgpack.packb({"status": "reset"}, use_bin_type=True))
 
             elif command == "infer":

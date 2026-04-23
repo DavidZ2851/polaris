@@ -78,6 +78,7 @@ class DataArgs:
     max_attempts: int = 100
     debug: bool = False
     device: str = "cuda"
+    max_episode_length: int = 300 # max_episode_length = episode_length_s / (dt * decimation)
 
 
 
