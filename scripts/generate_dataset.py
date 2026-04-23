@@ -37,6 +37,9 @@ def main(data_args: DataArgs):
     DEVICE = data_args.device
 
     env_cfg = parse_env_cfg(data_args.environment, device=DEVICE, num_envs=1, use_fabric=True)
+
+    env_cfg.episode_length_s = data_args.max_episode_length * (env_cfg.sim.dt * env_cfg.decimation)
+
     env: ManagerBasedRLSplatEnv = gym.make(data_args.environment, cfg=env_cfg, robot_config=data_args.robot)
 
     language_instruction, initial_conditions = load_eval_initial_conditions(env.usd_file)

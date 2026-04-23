@@ -316,7 +316,7 @@ class PointPolicyServer:
             gripper_state = self.prev_gripper_state
         self.prev_gripper_state = gripper_state
 
-        gripper_state = np.array([gripper_state])
+        gripper_state = gripper_state
         return gripper_state
 
 def main(args: Args):

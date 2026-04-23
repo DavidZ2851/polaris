@@ -47,6 +47,9 @@ def main(eval_args: EvalArgs):
         num_envs=1,
         use_fabric=True,
     )
+
+    env_cfg.episode_length_s = eval_args.max_episode_length * (env_cfg.sim.dt * env_cfg.decimation)
+    
     env: ManagerBasedRLSplatEnv = gym.make(eval_args.environment, cfg=env_cfg)  # type: ignore
 
     language_instruction, initial_conditions = load_eval_initial_conditions(
