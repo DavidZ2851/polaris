@@ -2,7 +2,7 @@
 """
 renumber_episodes.py
 Renumbers subfolders named episode_NNNNNN under a given path
-so they are sequential with no gaps (episode_000001, episode_000002, ...).
+so they are sequential with no gaps (episode_000000, episode_000001, ...).
 
 Usage:
     python renumber_episodes.py /path/to/your/folder
@@ -50,7 +50,7 @@ def renumber(root: str, dry_run: bool = False) -> None:
 
     # Check if already sequential
     numbers = [num for num, _ in episodes]
-    expected = list(range(1, len(episodes) + 1))
+    expected = list(range(0, len(episodes)))  # 0-indexed: 0, 1, 2, ...
     if numbers == expected:
         print("Folders are already numbered sequentially. Nothing to do.")
         return
@@ -68,10 +68,10 @@ def renumber(root: str, dry_run: bool = False) -> None:
 
     # Pass 2: rename temporaries to final sequential names
     print()
-    for new_num, tmp in enumerate(temp_names, start=1):
+    for new_num, tmp in enumerate(temp_names, start=0):  # start=0
         final_name = f"episode_{new_num:06d}"
         dst = os.path.join(root, final_name)
-        old_num = episodes[new_num - 1][0]
+        old_num = episodes[new_num][0]
         label = f"episode_{old_num:06d}"
         print(f"  [pass 2] {label}  →  {final_name}")
         if not dry_run:
@@ -86,7 +86,7 @@ def renumber(root: str, dry_run: bool = False) -> None:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Renumber episode_NNNNNN subfolders to be sequential."
+        description="Renumber episode_NNNNNN subfolders to be sequential (0-indexed)."
     )
     parser.add_argument("path", help="Path to the parent folder containing episode folders")
     parser.add_argument(

@@ -244,9 +244,9 @@ gym.register(
         "usd_file": str(DATA_PATH / "pick_place_toys/scene.usda"),
         "rubric": Rubric(
             criteria=[
-                checkers.is_within_xy("blue_toy_large", "pink_box", percent_threshold=0.8),
-                checkers.is_within_xy("orange_toy", "pink_box", percent_threshold=0.8),
-                checkers.is_within_xy("yellow_toy", "pink_box", percent_threshold=0.8),
+                checkers.is_within_xy("blue_toy_large", "pink_box", percent_threshold=1),
+                checkers.is_within_xy("orange_toy", "pink_box", percent_threshold=1),
+                checkers.is_within_xy("yellow_toy", "pink_box", percent_threshold=1),
             ]
         ),
     },
