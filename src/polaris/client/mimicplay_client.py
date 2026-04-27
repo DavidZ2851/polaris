@@ -25,53 +25,73 @@ class MimicPlayClient(InferenceClient):
         self.motion_gen = setup_curobo()
         self.device = args.device
 
-    def delta_to_absolute(self, action_delta: np.ndarray, current_obs: dict,
-                          max_dpos: float = 0.05, max_drot: float = 0.5) -> np.ndarray:
-        """
-        Inverse of compute_delta_actions_robomimic.
+    def _normalize_quat_wxyz(self, q, eps=1e-8):
+        q = np.asarray(q, dtype=np.float64)
 
-        Args:
-            action_delta:  (7,) = delta_pos(3) + delta_axis_angle(3) + gripper(1), normalized
-            current_obs:   raw obs dict; current_obs["policy"]["ee_pose"] is (1, 7) = pos(3) + quat_wxyz(4)
-            max_dpos:      normalization scale for position delta
-            max_drot:      normalization scale for rotation delta
+        norm = np.linalg.norm(q)
+        if norm < eps or not np.isfinite(norm):
+            # Default orientation: wxyz = [0, 1, 0, 0]
+            q = np.array([0.0, 1.0, 0.0, 0.0], dtype=np.float64)
+        else:
+            q = q / norm
 
-        Returns:
-            (8,) = pos(3) + quat_wxyz(4) + gripper(1)  with gripper in [0, 1]
-        """
+        # Canonicalize sign:
+        # make the largest-magnitude component positive.
+        # This turns [0, -1, 0, 0] into [0, 1, 0, 0].
+        idx = np.argmax(np.abs(q))
+        if q[idx] < 0:
+            q = -q
+
+        return q
+
+    def delta_to_absolute(
+        self,
+        action_delta: np.ndarray,
+        current_obs: dict,
+        max_dpos: float = 0.05,
+        max_drot: float = 0.5,
+    ) -> torch.Tensor:
         from scipy.spatial.transform import Rotation as R
+
+        if isinstance(action_delta, torch.Tensor):
+            action_delta = action_delta.detach().cpu().numpy()
+
+        action_delta = np.asarray(action_delta, dtype=np.float64).reshape(-1)
 
         ee_pose = current_obs["policy"]["ee_pose"][0]
         if isinstance(ee_pose, torch.Tensor):
-            ee_pose = ee_pose.cpu().numpy()
+            ee_pose = ee_pose.detach().cpu().numpy()
+
+        ee_pose = np.asarray(ee_pose, dtype=np.float64).reshape(-1)
 
         curr_pos = ee_pose[:3]
-        curr_quat_wxyz = ee_pose[3:7]
 
-        # Unnormalize deltas
+        curr_quat_wxyz = self._normalize_quat_wxyz(ee_pose[3:7])
+
         delta_pos = action_delta[:3] * max_dpos
-        delta_aa  = action_delta[3:6] * max_drot
-        gripper   = action_delta[6]
+        delta_aa = action_delta[3:6] * max_drot
+        gripper = action_delta[6]
 
-        # Target position
         target_pos = curr_pos + delta_pos
 
-        # Current rotation (scipy uses xyzw)
         curr_quat_xyzw = curr_quat_wxyz[[1, 2, 3, 0]]
         curr_rot = R.from_quat(curr_quat_xyzw)
 
-        # Delta rotation from axis-angle, then compose: target = delta @ curr
-        delta_rot  = R.from_rotvec(delta_aa)
+        delta_rot = R.from_rotvec(delta_aa)
+
         target_rot = delta_rot * curr_rot
 
-        # Back to wxyz
         xyzw = target_rot.as_quat()
         target_quat_wxyz = np.array([xyzw[3], xyzw[0], xyzw[1], xyzw[2]])
 
-        # Gripper: [-1, +1] -> [0, 1]
-        gripper_abs = (gripper + 1.0) / 2.0
+        target_quat_wxyz = self._normalize_quat_wxyz(target_quat_wxyz)
 
-        result = np.concatenate([target_pos, target_quat_wxyz, [gripper_abs]]).astype(np.float32)
+        gripper_abs = 1.0 if gripper >= 0.0 else 0.0
+
+        result = np.concatenate(
+            [target_pos, target_quat_wxyz, [gripper_abs]]
+        ).astype(np.float32)
+
         return torch.from_numpy(result).to(self.device)
 
     def ee_to_joint(self, action_ee):
@@ -80,7 +100,11 @@ class MimicPlayClient(InferenceClient):
         gripper = action_ee[-1]
 
         ee_pos = ee_pos.to(self.device)
-        ee_quat = ee_quat.to(self.device)
+        ee_quat_np = ee_quat.detach().cpu().numpy()
+    
+        ee_quat_np = self._normalize_quat_wxyz(ee_quat_np)
+        ee_quat = torch.tensor(ee_quat_np, dtype=torch.float32, device=self.device)
+
 
         from curobo.types.math import Pose
 
