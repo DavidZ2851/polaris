@@ -1,7 +1,6 @@
 import torch
 import math
 import numpy as np
-from diff_surfel_rasterization import GaussianRasterizationSettings, GaussianRasterizer
 from diff_gaussian_rasterization import GaussianRasterizationSettings as GaussianRasterizationSettings3DGS, GaussianRasterizer as GaussianRasterizer3DGS
 from polaris.splat_renderer.scene.gaussian_model import GaussianModel
 import polaris.splat_renderer.utils.sh_utils as sh_utils
@@ -70,6 +69,8 @@ def render(
 
     Background tensor (bg_color) must be on GPU!
     """
+    from diff_surfel_rasterization import GaussianRasterizationSettings, GaussianRasterizer
+
     # Create zero tensor. We will use it to make pytorch return gradients of the 2D (screen-space) means
     screenspace_points = (
         torch.zeros_like(
