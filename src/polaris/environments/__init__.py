@@ -118,9 +118,9 @@ gym.register(
         "usd_file": str(DATA_PATH / "stack_bowls/scene.usda"),
         "rubric": Rubric(
             criteria=[
-                checkers.reach("green_bowl", threshold=0.1),
+                checkers.reach("green_bowl", threshold=0.2),
                 (checkers.lift("green_bowl", threshold=0.04), [0]),
-                checkers.reach("blue_bowl", threshold=0.1),
+                checkers.reach("blue_bowl", threshold=0.2),
                 (checkers.is_within_xy("blue_bowl", "green_bowl", percent_threshold=0.8), [1]),
             ]
         ),
