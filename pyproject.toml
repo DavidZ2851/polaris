@@ -36,6 +36,7 @@ dependencies = [
     "av",
     "msgpack_numpy",
     "msgpack",
+    "pytorch3d @ git+https://github.com/facebookresearch/pytorch3d.git@stable",
     #"torch>=2.9.0", # Change here for different CUDA version
     #"torchvision>=0.24.0", # Change here for different CUDA version
     "pyzmq>=27.1.0",
@@ -67,6 +68,7 @@ override-dependencies = [
 flatdict = ["setuptools<82"]
 polaris = ["hatchling"]
 diff-gaussian-rasterization = ["torch"]
+pytorch3d = ["torch", "setuptools"]
 
 [build-system]
 requires = ["hatchling"]

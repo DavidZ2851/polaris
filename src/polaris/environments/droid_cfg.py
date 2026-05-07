@@ -19,7 +19,7 @@ _GRASP_OFFSET_QUAT = torch.tensor(                        # wxyz
     dtype=torch.float32
 )
 
-FINGER_CLOSED_Y = 0.0
+FINGER_CLOSED_Y = 0.005
 FINGER_OPEN_Y   = 0.05 # half gripper width: 5 cm
 
 from polaris.environments.robot_cfg import NVIDIA_DROID
