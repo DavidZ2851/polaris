@@ -47,6 +47,7 @@ class PolicyArgs:
     config_path: str | None = None
     dataset_meta: str | None = None
     cam_key: str = "cam1"
+    obs_horizon: int = 2
     render_gripper_only: bool = False
 
 

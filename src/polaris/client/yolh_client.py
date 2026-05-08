@@ -1,4 +1,5 @@
 import pickle
+from collections import deque
 from typing import Optional, Tuple
 
 import numpy as np
@@ -33,6 +34,7 @@ class YOLHClient(InferenceClient):
         host = args.host if args.host is not None else "localhost"
         port = args.port if args.port is not None else 5557
         self.cam_key = args.cam_key if args.cam_key is not None else "cam1"
+        self.obs_horizon = max(1, getattr(args, "obs_horizon", 2) or 2)
 
         context = zmq.Context()
         self.socket = context.socket(zmq.REQ)
@@ -43,6 +45,7 @@ class YOLHClient(InferenceClient):
         self.action_chunk: Optional[np.ndarray] = None
         self.actions_from_chunk_completed = 0
         self.current_chunk_horizon = 0
+        self.ee_pose_history: deque[np.ndarray] = deque(maxlen=self.obs_horizon)
 
     @property
     def rerender(self) -> bool:
@@ -56,12 +59,15 @@ class YOLHClient(InferenceClient):
         self.action_chunk = None
         self.actions_from_chunk_completed = 0
         self.current_chunk_horizon = 0
+        self.ee_pose_history.clear()
         self.socket.send(pickle.dumps({"reset": True}))
         self.socket.recv()
 
     def infer(
         self, obs: dict, instruction: str, return_viz: bool = False
     ) -> Tuple[np.ndarray, Optional[np.ndarray]]:
+        self._update_ee_pose_history(obs)
+
         if self._need_new_chunk():
             request = self._build_request(obs)
             self.socket.send(pickle.dumps(request))
@@ -105,6 +111,7 @@ class YOLHClient(InferenceClient):
             "rgb": rgb,
             "depth": depth,
             "gripper_pcd": obs_dict["policy"]["gripper_pcd"][0].detach().cpu().numpy(),
+            "ee_pose_history": self._get_padded_ee_pose_history(),
         }
 
         mask_key = f"{self.cam_key}_mask"
@@ -112,6 +119,19 @@ class YOLHClient(InferenceClient):
             request["robot_mask"] = np.asarray(obs_dict["splat"][mask_key]).astype(np.bool_)
 
         return request
+
+    def _update_ee_pose_history(self, obs_dict: dict) -> None:
+        ee_pose = obs_dict["policy"]["ee_pose"][0].detach().cpu().numpy().astype(np.float32)
+        self.ee_pose_history.append(ee_pose)
+
+    def _get_padded_ee_pose_history(self) -> np.ndarray:
+        if not self.ee_pose_history:
+            raise RuntimeError("ee_pose_history is empty; call infer with a valid observation first")
+
+        history = list(self.ee_pose_history)
+        if len(history) < self.obs_horizon:
+            history = [history[0].copy() for _ in range(self.obs_horizon - len(history))] + history
+        return np.stack(history[-self.obs_horizon :]).astype(np.float32)
 
     def _hold_current_action(self, obs: dict) -> np.ndarray:
         joint_pos = obs["policy"]["arm_joint_pos"][0].detach().cpu().numpy()
