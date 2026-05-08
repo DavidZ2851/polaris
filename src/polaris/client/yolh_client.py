@@ -8,9 +8,23 @@ import torch
 
 from polaris.client.abstract_client import InferenceClient
 from polaris.config import PolicyArgs
-from polaris.policy.yolh.utils.transformation import rot6d_to_matrix
+# from polaris.policy.yolh.utils.transformation import rot6d_to_matrix
 from polaris.utils_.planner_utils import setup_curobo
 
+def rot6d_to_matrix(rot6d: np.ndarray) -> np.ndarray:
+    """Convert action rotation-6d representation to a 3x3 rotation matrix.
+
+    This follows the project's row-encoding convention used in action data.
+    """
+    rot6d = np.asarray(rot6d, dtype=np.float64)
+    a1 = rot6d[..., :3]
+    a2 = rot6d[..., 3:6]
+    b1 = a1 / (np.linalg.norm(a1, axis=-1, keepdims=True) + 1e-8)
+    dot = np.sum(b1 * a2, axis=-1, keepdims=True)
+    b2 = a2 - dot * b1
+    b2 = b2 / (np.linalg.norm(b2, axis=-1, keepdims=True) + 1e-8)
+    b3 = np.cross(b1, b2)
+    return np.stack([b1, b2, b3], axis=-1)
 
 @InferenceClient.register(client_name="YOLH")
 class YOLHClient(InferenceClient):
