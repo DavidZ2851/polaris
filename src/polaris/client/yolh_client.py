@@ -106,11 +106,16 @@ class YOLHClient(InferenceClient):
         depth = np.asarray(obs_dict["splat"][f"{self.cam_key}_depth"])
         if depth.ndim == 3 and depth.shape[-1] == 1:
             depth = depth[..., 0]
+        arm_joint_pos = (
+            obs_dict["policy"]["arm_joint_pos"][0].detach().cpu().numpy().astype(np.float32)
+        )
 
         request = {
             "rgb": rgb,
             "depth": depth,
-            "gripper_pcd": obs_dict["policy"]["gripper_pcd"][0].detach().cpu().numpy(),
+            "gripper_pcd": obs_dict["policy"]["gripper_width"][0].detach().cpu().numpy(),
+            "arm_joint_pos": arm_joint_pos,
+            "joint_angles": arm_joint_pos,
             "ee_pose_history": self._get_padded_ee_pose_history(),
         }
 
