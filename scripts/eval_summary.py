@@ -11,6 +11,15 @@ import pandas as pd
 from pathlib import Path
 
 
+def infer_num_stages(progress_series: pd.Series) -> int:
+    nonzero = progress_series[progress_series > 1e-9]
+    if nonzero.empty:
+        return 3
+    min_prog = nonzero.min()
+    n = round(1.0 / min_prog)
+    return max(n, 2)
+
+
 def summarize(csv_path: Path):
     df = pd.read_csv(csv_path)
     n = len(df)
@@ -18,17 +27,21 @@ def summarize(csv_path: Path):
         print("No episodes found.")
         return
 
-    s1 = (df["progress"] >= 1/3 - 1e-6).sum()
-    s2 = (df["progress"] >= 2/3 - 1e-6).sum()
-    s3 = (df["success"] == True).sum()
     avg_progress = df["progress"].mean()
+    num_stages = infer_num_stages(df["progress"])
 
     print(f"Run:      {csv_path.parent}")
     print(f"Episodes: {n}")
-    print(f"Avg progress (mean across episodes): {avg_progress:.3f}  ({100*avg_progress:.1f}%)")
-    print(f"Stage 1 (reach,  progress≥0.33): {s1:3d}/{n}  ({100*s1/n:.1f}%)")
-    print(f"Stage 2 (lift,   progress≥0.67): {s2:3d}/{n}  ({100*s2/n:.1f}%)")
-    print(f"Stage 3 (place,  success=True  ): {s3:3d}/{n}  ({100*s3/n:.1f}%)")
+    print(f"Stages:   {num_stages} (auto-detected)")
+    print(f"Avg progress: {avg_progress:.3f}  ({100*avg_progress:.1f}%)")
+
+    for k in range(1, num_stages):
+        threshold = k / num_stages
+        count = (df["progress"] >= threshold - 1e-6).sum()
+        print(f"Stage {k} (progress≥{threshold:.2f}): {count:3d}/{n}  ({100*count/n:.1f}%)")
+
+    success_count = (df["success"] == True).sum()
+    print(f"Stage {num_stages} (success=True):       {success_count:3d}/{n}  ({100*success_count/n:.1f}%)")
 
 
 def main():

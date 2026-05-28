@@ -203,8 +203,32 @@ python scripts/eval_policy.py \
 | `--rollouts` | required | Number of episodes to evaluate |
 | `--max-episode-length` | 300 | Max steps per episode |
 | `--seed` | 42 | Random seed |
+| `--task_config` | `None` | Path to a custom `task_config.yaml` (overrides `<env_folder>/task_config.yaml`) |
 
 Results are saved to `<run_folder>/eval_results.csv` and `<run_folder>/episode_N.mp4`. Evaluation supports **resuming** — if the CSV already exists, completed episodes are skipped automatically.
+
+### Using a Custom Task Config
+
+By default, `eval_policy.py` loads `task_config.yaml` from the environment folder (the USD's directory). To evaluate with a different object-randomization / waypoint config — for example to sweep object placements — drop additional YAMLs alongside the default and select one with `--task_config`:
+
+```
+PolaRiS-Hub/put_red_cup_no_curtain/
+├── task_config.yaml           # default
+├── task_config_y_left.yaml    # custom variant
+└── task_config_y_right.yaml   # custom variant
+```
+
+```bash
+python scripts/eval_policy.py \
+    --policy.client DiffusionPolicy \
+    --policy.host localhost --policy.port 5557 --policy.open_loop_horizon 8 \
+    --environment DROID-PutRedCup-no-curtain \
+    --run_folder runs/new_camera_calib/pick_mug/object_placement/mug_left \
+    --rollouts 30 \
+    --task_config PolaRiS-Hub/put_red_cup_no_curtain/task_config_y_left.yaml
+```
+
+If `--task_config` is omitted, the default `<env_folder>/task_config.yaml` is used.
 
 ---
 
@@ -250,7 +274,8 @@ PolaRiS-Hub/put_red_cup_no_curtain/
 ├── initial_conditions.json
 ├── scene.json
 ├── scene.usda
-└── task_config.yaml
+├── task_config.yaml
+└── task_config_*.yaml   # optional variants (see "Using a Custom Task Config" above)
 ```
 
 ---
@@ -273,6 +298,29 @@ PolaRiS-Hub/nvidia_droid/
 └── SEGMENTED/
     └── *.ply  (per-link splat files)
 ```
+
+---
+
+## Benchmark Results
+
+Results computed with `scripts/summarize_seeds.py` (3 seeds: 0, 42, 100; 30 rollouts each).  
+**SR (30 rollouts)** = mean of all stage SRs. To reproduce or append a new method:
+
+```bash
+python scripts/summarize_seeds.py <base_dir> --num-stages 4 \
+    --method <MethodName> --output-csv <path/to/results.csv>
+```
+
+### Stack Bowls
+
+| Method | Human demos | Robot demos | SR (30 rollouts) | SR 1st stage | SR 2nd stage | SR 3rd stage | SR 4th stage |
+|---|---|---|---|---|---|---|---|
+| Phantom | 0 | 100 | 60.0% ± 4.8% | 97.8% ± 1.6% | 70.0% ± 9.8% | 63.3% ± 7.2% | 8.9% ± 3.1% |
+|         | 100 | 100 | 78.9% ± 1.4% | 100.0% ± 0.0% | 96.7% ± 0.0% | 93.3% ± 2.7% | 25.6% ± 3.1% |
+|         | 200 | 100 | **79.7% ± 3.9%** | 100.0% ± 0.0% | 90.0% ± 2.7% | 86.7% ± 5.4% | 42.2% ± 7.9% |
+|         | 300 | 100 | 75.6% ± 2.7% | 100.0% ± 0.0% | 91.1% ± 3.1% | 85.6% ± 4.2% | 25.6% ± 6.8% |
+
+Run folders: `runs/new_camera_calib/stack_bowls/phantom/multiple_seeds/`
 
 ---
 

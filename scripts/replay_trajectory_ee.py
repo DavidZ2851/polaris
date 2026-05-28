@@ -10,18 +10,20 @@ parser.add_argument("--traj_file", type=str, required=True, help="Path to trajec
 parser.add_argument("--output_dir", type=str, default=".", help="Directory to save output videos")
 parser.add_argument("--mode", type=str, default="joint", choices=["joint", "ee"],
                     help="joint: replay action_joint directly; ee: replay action_ee via IK")
+parser.add_argument("--controller", type=str, default="DROID-PutRedCup-no-curtain",
+                    help="Environment/controller id passed to gym.make and parse_env_cfg")
 args_cli, _ = parser.parse_known_args()
 args_cli.enable_cameras = True
 args_cli.headless = True
 app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
 
-import polaris.environments
+import polaris.environments 
 from isaaclab_tasks.utils import parse_env_cfg
 from polaris.environments.manager_based_rl_splat_environment import ManagerBasedRLSplatEnv
 from polaris.utils import load_eval_initial_conditions
 
-CONTROLLER = "DROID-PutRedCup-no-curtain"
+CONTROLLER = args_cli.controller
 env_cfg = parse_env_cfg(CONTROLLER, device="cuda", num_envs=1, use_fabric=True)
 env: ManagerBasedRLSplatEnv = gym.make(CONTROLLER, cfg=env_cfg)
 

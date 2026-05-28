@@ -53,7 +53,7 @@ def main(data_args: DataArgs):
     calibration_path = os.path.join(data_args.env_folder, "cam_calibration.json")
 
     print("Language instruction:", language_instruction)
-    print(f"Loaded {len(waypoints)} waypoints from task_config.yaml")
+    print(f"Loaded {len(waypoints)} waypoints from {task_config_path}")
 
     save_dir = data_args.save_dir
     os.makedirs(save_dir, exist_ok=True)

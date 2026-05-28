@@ -57,9 +57,10 @@ def main(eval_args: EvalArgs):
         initial_conditions_file=eval_args.initial_conditions_file,
         rollouts=eval_args.rollouts,
     )
-    object_randomization, _ = load_task_config(
-        os.path.join(eval_args.env_folder, "task_config.yaml")
+    task_config_path = eval_args.task_config or os.path.join(
+        eval_args.env_folder, "task_config.yaml"
     )
+    object_randomization, _ = load_task_config(task_config_path)
 
     # Randomise object poses
     ic = randomize_object_poses(object_randomization, initial_conditions)[0]

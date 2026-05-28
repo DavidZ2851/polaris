@@ -44,6 +44,11 @@ class PolicyArgs:
     open_loop_horizon: int | None = 8
     policy_path: tuple[str, ...] | str = None
     device : str = "cuda:0"
+    config_path: str | None = None
+    dataset_meta: str | None = None
+    cam_key: str = "cam1"
+    obs_horizon: int = 2
+    render_gripper_only: bool = False
 
 
 @dataclass
@@ -59,6 +64,7 @@ class EvalArgs:
     rollouts: int | None = None  # Number of rollouts to evaluate
     robot: str = "franka_robotiq_2f_85"
     env_folder: str | None = None
+    task_config: str | None = None  # Path to a custom task_config.yaml (overrides env_folder/task_config.yaml)
     device: str = "cuda:0"
     max_episode_length: int = 300 # max_episode_length = episode_length_s / (dt * decimation)
     tqdm_position: int = 0
@@ -69,16 +75,18 @@ class EvalArgs:
 class DataArgs:
     """Data Generation configuration."""
     environment: str = "DROID-PutRedCup-no-curtain" # Which IsaacLab environment to use
-    env_folder = None
+    env_folder: str | None = None
+    task_config: str | None = None  # Path to a custom task_config.yaml (overrides env_folder/task_config.yaml)
     save_dir: str | None = None # Path to run folder
     headless: bool = True  # Whether to run in headless mode
     robot: str = "franka_robotiq_2f_85" # Which robot
     instruction: str | None = None  # Override language instruction
     num_episodes: int = 50
     max_attempts: int = 100
+    max_episode_length: int = 300  # max_episode_length = episode_length_s / (dt * decimation)
     debug: bool = False
     device: str = "cuda"
-    max_episode_length: int = 300 # max_episode_length = episode_length_s / (dt * decimation)
+    gpu_id: int = 0
 
 
 
