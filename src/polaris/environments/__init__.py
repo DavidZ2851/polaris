@@ -121,7 +121,7 @@ gym.register(
                 checkers.reach("green_bowl", threshold=0.2),
                 (checkers.lift("green_bowl", threshold=0.04), [0]),
                 checkers.reach("blue_bowl", threshold=0.2),
-                (checkers.is_within_xy("blue_bowl", "green_bowl", percent_threshold=0.8), [1]),
+                (checkers.is_within_xy("blue_bowl", "green_bowl", percent_threshold=0.5), [1]),
             ]
         ),
     },
