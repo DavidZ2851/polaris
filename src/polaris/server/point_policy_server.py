@@ -78,15 +78,25 @@ def numpy_to_list(v):
 
 def draw_tracks(img, obj_2d, rob_2d):
         img = img.copy()
-        
+
         for i, pt in enumerate(obj_2d):
-            x, y = int(pt[0]), int(pt[1])
-            cv2.circle(img, (x, y), 5, (255, 255, 255), -1)
-            cv2.putText(img, f"obj{i}", (x+3, y+3), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)
+            try:
+                if not (np.isfinite(pt[0]) and np.isfinite(pt[1])):
+                    continue
+                x, y = int(pt[0]), int(pt[1])
+                cv2.circle(img, (x, y), 5, (255, 255, 255), -1)
+                cv2.putText(img, f"obj{i}", (x+3, y+3), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)
+            except (ValueError, OverflowError, cv2.error):
+                continue
         for i, pt in enumerate(rob_2d):
-            x, y = int(pt[0]), int(pt[1])
-            cv2.circle(img, (x, y), 5, (0, 0, 255), -1)
-            cv2.putText(img, f"rob{i}", (x+3, y+3), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+            try:
+                if not (np.isfinite(pt[0]) and np.isfinite(pt[1])):
+                    continue
+                x, y = int(pt[0]), int(pt[1])
+                cv2.circle(img, (x, y), 5, (0, 0, 255), -1)
+                cv2.putText(img, f"rob{i}", (x+3, y+3), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+            except (ValueError, OverflowError, cv2.error):
+                continue
         return img
 
 class PointPolicyServer:
@@ -167,6 +177,7 @@ class PointPolicyServer:
 
         return action, frame
 
+    @torch.no_grad()
     def process_point(self, obs: dict) -> dict:
         """
         Process observation to add point tracks.

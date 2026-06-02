@@ -115,7 +115,7 @@ def ee_pose_to_right_eef_pose(ee_pose: np.ndarray) -> np.ndarray:
     rot_mat = R.from_quat(q_xyzw).as_matrix()   # (3, 3)
     rot_6d  = rot_mat[:2, :].reshape(6)          # first two rows → 6-dim
 
-    return np.concatenate([rot_6d, xyz, gripper]).astype(np.float32)
+    return np.concatenate([xyz, rot_6d, gripper]).astype(np.float32)
 
 
 # ---------------------------------------------------------------------------

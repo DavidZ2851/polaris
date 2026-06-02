@@ -283,10 +283,10 @@ class GhostClient(InferenceClient):
         from curobo.types.math import Pose
 
         if action_ee.shape[0] == 10:
-            # rot6d(6) + xyz(3) + gripper(1)
-            pos_np  = action_ee[6:9]
+            #  xyz(3) + rot6d(6) + gripper(1)
+            pos_np  = action_ee[:3]
             import pytorch3d.transforms as pt3d
-            rot6d_t = torch.tensor(action_ee[:6], dtype=torch.float32).unsqueeze(0)
+            rot6d_t = torch.tensor(action_ee[3:9], dtype=torch.float32).unsqueeze(0)
             rot_mat = pt3d.rotation_6d_to_matrix(rot6d_t).squeeze(0).numpy()  # (3,3)
             q_xyzw  = R.from_matrix(rot_mat).as_quat()
             q_wxyz  = np.array([q_xyzw[3], q_xyzw[0], q_xyzw[1], q_xyzw[2]], dtype=np.float64)
