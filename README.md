@@ -1,6 +1,12 @@
-# Human2Robot Benchmark
+# H2RBench: A Real-to-Sim Benchmark for Evaluating Human-to-Robot Transfer
 
-This repository provides tools for generating simulation datasets, setting up test environments, and evaluating policies in IsaacLab — built on top of [PolaRiS](https://github.com/arhanjain/polaris).
+**[🌐 Project Website](https://h2rbench.github.io/)** • **[📄 arXiv](https://arxiv.org/abs/TODO)** • **[📋 Paper (CoRL 2026)](https://arxiv.org/abs/TODO)**
+
+**Chuyang Xiao\*, Haotian Zhan\*, Sriram Krishna, Peilin Meng, Muhammad Zubair Irshad, Sergey Zakharov, David Held**  
+*Robotics Institute, Carnegie Mellon University · University of Michigan · Toyota Research Institute*  
+\* Equal contribution
+
+This repository provides the simulation benchmark, dataset generation tools, and policy evaluation framework for H2RBench — built on top of [PolaRiS](https://github.com/arhanjain/polaris).
 
 ---
 
@@ -326,14 +332,14 @@ PolaRiS-Hub/nvidia_droid/
 If you find this repository useful, please cite our work:
 
 ```bibtex
-@misc{human2robot2025,
-      title={Human2Robot Benchmark},
-      author={},
-      year={2025},
-      url={https://github.com/DavidZ2851/polaris},
+@inproceedings{xiao2026h2rbench,
+      title={H2RBench: A Real-to-Sim Benchmark for Evaluating Human-to-Robot Transfer},
+      author={Chuyang Xiao and Haotian Zhan and Sriram Krishna and Peilin Meng
+              and Muhammad Zubair Irshad and Sergey Zakharov and David Held},
+      booktitle={Conference on Robot Learning (CoRL)},
+      year={2026},
+      url={https://arxiv.org/abs/TODO},
 }
 ```
-
-> Paper coming soon.
 
 And please also cite the underlying PolaRiS framework (see [Built on PolaRiS](#built-on-polaris) above).
