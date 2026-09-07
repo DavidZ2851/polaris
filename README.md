@@ -1,25 +1,38 @@
-> **Human2Robot Benchmark users:** see [docs/human2robot_benchmark/README.md](docs/human2robot_benchmark/README.md) for dataset generation, environment setup, and policy evaluation instructions.
+# Human2Robot Benchmark
+
+This repository provides tools for generating simulation datasets, setting up test environments, and evaluating policies in IsaacLab — built on top of [PolaRiS](https://github.com/arhanjain/polaris).
 
 ---
 
-<img src="docs/images/Teaser Figure.png">
+## Built on PolaRiS
+
+This project extends [PolaRiS: Scalable Real-to-Sim Evaluations for Generalist Robot Policies](https://arxiv.org/abs/2512.16881). PolaRiS provides the core environment reconstruction pipeline, Isaac Lab integration, and evaluation infrastructure that we build upon.
+
+If you use this repository, please also cite the original PolaRiS work:
+
+```bibtex
+@misc{jain2025polarisscalablerealtosimevaluations,
+      title={PolaRiS: Scalable Real-to-Sim Evaluations for Generalist Robot Policies},
+      author={Arhan Jain and Mingtong Zhang and Kanav Arora and William Chen and Marcel Torne
+              and Muhammad Zubair Irshad and Sergey Zakharov and Yue Wang and Sergey Levine
+              and Chelsea Finn and Wei-Chiu Ma and Dhruv Shah and Abhishek Gupta and Karl Pertsch},
+      year={2025},
+      eprint={2512.16881},
+      archivePrefix={arXiv},
+      primaryClass={cs.RO},
+      url={https://arxiv.org/abs/2512.16881},
+}
+```
 
 ---
 
-# PolaRiS
+## Environment Setup
 
-**[🌐 Website](https://polaris-evals.github.io/)** • **[📄 Paper](https://arxiv.org/abs/2512.16881)** • **[🤗 PolaRiS Hub](https://huggingface.co/datasets/owhan/PolaRiS-Hub)**
-
-
-PolaRiS is a evaluation framework for generalist policies. It provides tooling for reconstructing environments, evaluating models, and running experiments with minimal setup.
-
-## Installation
-
-### Clone the repository (recursively)
+### 1. Clone the repository (recursively)
 
 ```bash
-git clone --recursive git@github.com:arhanjain/polaris.git
-cd PolaRiS
+git clone --recursive git@github.com:DavidZ2851/polaris.git
+cd polaris
 ```
 
 If you cloned without `--recursive`:
@@ -28,152 +41,322 @@ If you cloned without `--recursive`:
 git submodule update --init --recursive
 ```
 
-### Setup environment with uv
-If you don't have UV installed, see [installation instructions](https://docs.astral.sh/uv/getting-started/installation/)
+### 2. Install dependencies with uv
 
+If you don't have uv installed, see [installation instructions](https://docs.astral.sh/uv/getting-started/installation/).
 
-By default we support CUDA 13. If you have an older version of CUDA installed, please downgrade the torch and torchvision version and index to be compatible in the [pyproject.toml](pyproject.toml).
+By default CUDA 13 is supported. If you have an older CUDA version, downgrade torch/torchvision in `pyproject.toml` accordingly.
+
 ```bash
-uv sync 
+uv sync
 ```
 
-## Getting Started
-First, download the PolaRiS environments (<2GB)
+### 3. Activate the environment
+
+```bash
+source .venv/bin/activate
+```
+
+### 4. Download PolaRiS environments
+
 ```bash
 uvx hf download owhan/PolaRiS-Hub --repo-type=dataset --local-dir ./PolaRiS-Hub
 ```
 
-### Minimal Code Example
-Next let's test a simple random action policy in a PolaRiS environment.
-```python
-import torch
-import argparse
-import gymnasium as gym
-from isaaclab.app import AppLauncher
-# This must be done before importing anything with dependency on Isaaclab
-# >>>> Isaac Sim App Launcher <<<<
-parser = argparse.ArgumentParser()
-args_cli, _ = parser.parse_known_args()
-args_cli.enable_cameras = True
-args_cli.headless = True
-app_launcher = AppLauncher(args_cli)
-simulation_app = app_launcher.app
-# >>>> Isaac Sim App Launcher <<<<
+### 5. Install ffmpeg (for saving videos)
 
-import polaris.environments
-from isaaclab_tasks.utils import parse_env_cfg  # noqa: E402
-from polaris.environments.manager_based_rl_splat_environment import ManagerBasedRLSplatEnv
-from polaris.utils import load_eval_initial_conditions
-
-env_cfg = parse_env_cfg(
-    "DROID-FoodBussing",
-    device="cuda",
-    num_envs=1,
-    use_fabric=True,
-)
-env: ManagerBasedRLSplatEnv = gym.make("DROID-FoodBussing", cfg=env_cfg)   # type: ignore
-language_instruction, initial_conditions = load_eval_initial_conditions(env.usd_file)
-obs, info = env.reset(object_positions = initial_conditions[0])
-
-while True:
-    action = torch.tensor(env.action_space.sample())
-    obs, rew, term, trunc, info = env.step(action, expensive=True)
-
-    if term[0] or trunc[0]:
-        break
-
-print(f"Episode Finished. Success: {info['rubric']['success']}, Progress: {info['rubric']['progress']}")
-```
-
-### Run a π0.5 Policy in PolaRiS
-*Note: First run may take longer due to JIT compilation of the splat rasterization kernels. Ensure you have NVIDIA Drivers and CUDA Toolkit (nvcc) properly configured.*
-
-Both the policy server and evaluation process should fit onto a single GPU (tested on RTX 3090, 24 GB). 
 ```bash
-# Starting from the root of this repo. This will setup openpi and host a pi05 policy.
-cd third_party/openpi
-GIT_LFS_SKIP_SMUDGE=1 uv sync
-GIT_LFS_SKIP_SMUDGE=1 uv pip install -e .
-XLA_PYTHON_CLIENT_MEM_FRACTION=0.35 uv run scripts/serve_policy.py --port 8000 policy:checkpoint --policy.config pi05_droid_jointpos_polaris --policy.dir gs://openpi-assets/checkpoints/polaris/pi05_droid_jointpos_polaris
-
-# In a separate process, start evaluation process
-sudo apt install ffmpeg # for saving videos
-uv run scripts/eval.py --environment DROID-FoodBussing --policy.port 8000 --run-folder runs/test
+sudo apt install ffmpeg
 ```
-Results include rollout videos, and a CSV summarizing success and normalized progress of each episode.
 
-### Off-the-shelf Evaluation Environments
-| Environment Name | Prompt | Image |
-| :--- | :--- | :--- | 
-| DROID-BlockStackKitchen | Place and stack the blocks on top of the green tray | <img src="docs/images/stack.png" width="200"> |
-| DROID-FoodBussing | Put all the foods in the bowl | <img src="docs/images/foodbus.png" width="200"> |
-| DROID-PanClean | Use the yellow sponge to scrub the blue handle frying pan | <img src="docs/images/panclean.png" width="200"> |
-| DROID-MoveLatteCup | put the latte art cup on top of the cutting board | <img src="docs/images/latte-cup.png" width="200"> |
-| DROID-OrganizeTools | put the scissor into the large container | <img src="docs/images/organize-tools.png" width="200"> |
-| DROID-TapeIntoContainer | put the tape into the container | <img src="docs/images/tape-into-container.png" width="200"> |
+### 6. Download large files
 
-### PolaRiS-Ready Policies
+Several large files are not tracked in git and must be downloaded separately.
 
-All checkpoints for PolaRiS were based on DROID base policies. Checkpoints were produced by cotraining at a weightage of 10% random simulated data and 90% DROID data for 1k steps.
+**[Download from Google Drive](https://drive.google.com/drive/u/0/folders/17L0uBJ1sspTK_x4m-4raml4SKH1TifHc)**
 
-| Policy Name | Checkpoints Path |
-| :--- | :--- |
-| **π0.5 Polaris** | `gs://openpi-assets/checkpoints/polaris/pi05_droid_jointpos_polaris` |
-| **π0 Fast Polaris** | `gs://openpi-assets/checkpoints/polaris/pi0_fast_droid_jointpos_polaris` |
-| **π0 Polaris** | `gs://openpi-assets/checkpoints/polaris/pi0_droid_jointpos_polaris` |
-| **π0 Polaris (100k)** | `gs://openpi-assets/checkpoints/polaris/pi0_droid_jointpos_100k_polaris` |
-| **PaliGemma Polaris** | `gs://openpi-assets/checkpoints/polaris/paligemma_binning_droid_jointpos_polaris` 
+After downloading, unzip each file and place it in the location described in the [Large File Setup](#large-file-setup) section below.
 
-For the full list of all checkpoints, base policies, and environments we provide for evaluation, see [checkpoints_and_envs.md](docs/checkpoints_and_envs.md)
+---
 
-## Cotraining and Evaluating Your Policies In PolaRiS
-<ol>
-   <li>Download DROID simulated cotraining dataset</li>
-   <li>Cotrain a policy
-      <ol type="a">
-         <li>Using OpenPI
-            <ul>
-               <li>We provide cotraining configs for 4 policies in <a href="https://github.com/Physical-Intelligence/openpi/blob/main/src/openpi/training/misc/polaris_config.py">openpi</a></li>
-               </li>
-               <li>We already provide a client to inference openpi DROID policies in <a href="src/polaris/policy/droid_jointpos_client.py">src/polaris/policy/droid_jointpos_client.py</a></li>
-            </ul>
-         </li>
-         <li>Training a custom policy</li>
-         <ul>
-            <li>We recommend co-finetuning your policy with the provided sim dataset at 10% weightage</li>
-            <li>May need to define a custom policy client if your policy is not compatible with the provided DROID JointPosition client</li>
-         </ul>
-      </ol
-   </li>
-</ol>
+## 1. Generating Datasets
 
-See <a href="docs/custom_policies.md">custom_policies.md</a> for more details
+Use `scripts/generate_dataset.py` to collect demonstration data using a motion planner inside the sim.
 
+```bash
+python scripts/generate_dataset.py \
+    --save_dir /home/$USER/polaris/debug
+```
 
-## Creating Custom Evaluation Environments 
-Time Estimate: 20 Minutes Human Time + 40 Minutes Offline Training
-1. Take a video
-2. Extract splat and mesh (we use 2DGS, but any method that produces both can work)
-3. Compose environment USD using our provided Web GUI
-4. Run evaluation :)
-5. Contribute to the community pool of evaluation environments!
+Key options (from `DataArgs` in `src/polaris/config.py`):
 
-For detailed instructions, see [docs/custom_environments.md](docs/custom_environments.md)
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--environment` | `DROID-PutRedCup-no-curtain` | IsaacLab environment to use |
+| `--save_dir` | required | Directory to save the dataset |
+| `--num_episodes` | 50 | Number of episodes to collect |
+| `--max_attempts` | 100 | Max planning attempts per episode |
+| `--headless` | True | Run without GUI |
 
-## Issues
-This codebase has been tested on CUDA 13 and CUDA 12 with NVIDIA 5090 and 3090 GPUs. Please raise an issue if you run into any issues.
+---
+
+## 2. Testing the Environment
+
+Verify the environment loads and renders correctly:
+
+```bash
+python scripts/test_env.py
+```
+
+---
+
+## 3. Policy Evaluation
+
+Evaluation follows a **client-server** architecture:
+
+- **Server** (`src/polaris/server/`): loads the policy checkpoint and serves actions over ZMQ
+- **Client** (`src/polaris/client/`): connects to the server, sends observations, receives actions
+- **Eval script** (`scripts/eval_policy.py`): runs the IsaacLab environment and drives the eval loop
+
+### Available Servers and Clients
+
+| Policy | Server | Client Name | Notes |
+|--------|--------|-------------|-------|
+| Diffusion Policy | `src/polaris/server/diffusion_policy_server.py` | `DiffusionPolicy` | `robodiff` conda env |
+| AMPLIFY | `src/polaris/server/amplify_server.py` | `AMPLIFY` | `amplify` conda env |
+| LeRobot Diffusion | `src/polaris/server/lerobot_diffusion_server.py` | `LeRobotDiffusion` | `robodiff` conda env |
+| DROID JointPos | — | `DroidJointPos` | openpi-based policies |
+| Ghost | `src/polaris/server/ghost_server.py` | `Ghost` | see `server/launch_ghost_server.sh` |
+
+### Camera Usage per Policy
+
+Camera names in `obs["splat"]` come from the USD scene prim names (e.g. `cam0`, `cam1`, `wrist_cam`).
+
+| Policy | Cameras used | Notes |
+|--------|-------------|-------|
+| `DiffusionPolicy` | `cam1` | Front camera only (`(H, W, 3)`) |
+| `AMPLIFY` | `cam0`, `cam1` | Two views stacked as `(2, H, W, 3)`; `cam0` = front, `cam1` = left |
+| `DroidJointPos` | `external_cam`, `wrist_cam` | Uses sim camera names directly |
+
+---
+
+### Example: Diffusion Policy
+
+**Step 1 — Start the server** (separate terminal, `robodiff` env):
+
+```bash
+cd ~/vxiao/human2robot/benchmark_new/polaris
+conda activate robodiff
+python src/polaris/server/diffusion_policy_server.py \
+    --ckpt_path policy_ckpt/diffusion_policy/red_mug/new_camera_calib/human40_robot40.ckpt \
+    --port 5557
+```
+
+**Step 2 — Run evaluation** (polaris `.venv`):
+
+```bash
+cd ~/vxiao/human2robot/benchmark_new/polaris
+source .venv/bin/activate
+python scripts/eval_policy.py \
+    --policy.client DiffusionPolicy \
+    --policy.host localhost \
+    --policy.port 5557 \
+    --policy.open_loop_horizon 8 \
+    --environment DROID-PutRedCup-no-curtain \
+    --run_folder runs/new_camera_calib/human40_robot40 \
+    --rollouts 30
+```
+
+---
+
+### Example: AMPLIFY
+
+**Step 1 — Bundle checkpoint** (if not already bundled):
+
+```bash
+python src/polaris/policy/amplify/amplify/bundle_amplify.py \
+    --mt_ckpt  /data/vxiao/benchmark_new/polaris/policy_ckpt/amplify_new/<folder>/motion.pt \
+    --fd_ckpt  /data/vxiao/benchmark_new/polaris/policy_ckpt/amplify_new/<folder>/forward.pt \
+    --id_ckpt  /data/vxiao/benchmark_new/polaris/policy_ckpt/amplify_new/<folder>/inverse.pt \
+    --save-to  /data/vxiao/benchmark_new/polaris/policy_ckpt/amplify_new/<folder>/amplify.pt \
+    --overwrite
+```
+
+**Step 2 — Start the server** (`amplify` conda env):
+
+```bash
+cd ~/vxiao/human2robot/benchmark_new/polaris
+conda activate amplify
+python src/polaris/server/amplify_server.py \
+    --ckpt_path /data/vxiao/benchmark_new/polaris/policy_ckpt/amplify_new/<folder>/amplify.pt \
+    --text_emb  /data/vxiao/benchmark_new/polaris/policy_ckpt/amplify_new/pick_mug_text_emb.npy \
+    --port 5557 \
+    --vis_tracks
+```
+
+**Step 3 — Run evaluation** (polaris `.venv`):
+
+```bash
+cd ~/vxiao/human2robot/benchmark_new/polaris
+source .venv/bin/activate
+python scripts/eval_policy.py \
+    --policy.client AMPLIFY \
+    --policy.host localhost \
+    --policy.port 5557 \
+    --policy.open_loop_horizon 8 \
+    --environment DROID-PutRedCup-no-curtain \
+    --run_folder runs/new_camera_calib/amplify/<folder> \
+    --rollouts 30
+```
+
+---
+
+## Key `eval_policy.py` Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--policy.client` | required | Client name (e.g. `DiffusionPolicy`, `AMPLIFY`) |
+| `--policy.host` | required | Server host (e.g. `localhost`) |
+| `--policy.port` | required | Server port |
+| `--policy.open_loop_horizon` | required | Steps to execute per action chunk |
+| `--environment` | required | IsaacLab environment ID |
+| `--run_folder` | required | Where to save videos and `eval_results.csv` |
+| `--rollouts` | required | Number of episodes to evaluate |
+| `--max-episode-length` | 300 | Max steps per episode |
+| `--seed` | 42 | Random seed |
+| `--task_config` | `None` | Path to a custom `task_config.yaml` |
+
+Results are saved to `<run_folder>/eval_results.csv` and `<run_folder>/episode_N.mp4`. Evaluation supports **resuming** — if the CSV already exists, completed episodes are skipped automatically.
+
+### Using a Custom Task Config
+
+By default, `eval_policy.py` loads `task_config.yaml` from the environment folder. To evaluate with a different object-randomization / waypoint config, pass `--task_config`:
+
+```
+PolaRiS-Hub/put_red_cup_no_curtain/
+├── task_config.yaml           # default
+├── task_config_y_left.yaml    # custom variant
+└── task_config_y_right.yaml   # custom variant
+```
+
+```bash
+python scripts/eval_policy.py \
+    --policy.client DiffusionPolicy \
+    --policy.host localhost --policy.port 5557 --policy.open_loop_horizon 8 \
+    --environment DROID-PutRedCup-no-curtain \
+    --run_folder runs/new_camera_calib/pick_mug/object_placement/mug_left \
+    --rollouts 30 \
+    --task_config PolaRiS-Hub/put_red_cup_no_curtain/task_config_y_left.yaml
+```
+
+---
+
+## Benchmark Results
+
+Results computed with `scripts/summarize_seeds.py` (3 seeds: 0, 42, 100; 30 rollouts each).  
+**SR (30 rollouts)** = mean of all stage SRs. To reproduce or append a new method:
+
+```bash
+python scripts/summarize_seeds.py <base_dir> --num-stages 4 \
+    --method <MethodName> --output-csv <path/to/results.csv>
+```
+
+### Stack Bowls
+
+| Method | Human demos | Robot demos | SR (30 rollouts) | SR 1st stage | SR 2nd stage | SR 3rd stage | SR 4th stage |
+|---|---|---|---|---|---|---|---|
+| Phantom | 0 | 100 | 60.0% ± 4.8% | 97.8% ± 1.6% | 70.0% ± 9.8% | 63.3% ± 7.2% | 8.9% ± 3.1% |
+|         | 100 | 100 | 78.9% ± 1.4% | 100.0% ± 0.0% | 96.7% ± 0.0% | 93.3% ± 2.7% | 25.6% ± 3.1% |
+|         | 200 | 100 | **79.7% ± 3.9%** | 100.0% ± 0.0% | 90.0% ± 2.7% | 86.7% ± 5.4% | 42.2% ± 7.9% |
+|         | 300 | 100 | 75.6% ± 2.7% | 100.0% ± 0.0% | 91.1% ± 3.1% | 85.6% ± 4.2% | 25.6% ± 6.8% |
+
+Run folders: `runs/new_camera_calib/stack_bowls/phantom/multiple_seeds/`
+
+---
+
+## Adding a New Policy
+
+1. Create a new client in `src/polaris/client/` inheriting from `InferenceClient` and decorate with `@InferenceClient.register(client_name="YourPolicy")`
+2. Create a corresponding server in `src/polaris/server/` that loads your checkpoint and serves actions over ZMQ
+3. Import the new client in `src/polaris/client/__init__.py`
+4. Run with `--policy.client YourPolicy`
+
+---
+
+## Large File Setup
+
+Several large files are not tracked in git and must be downloaded from Google Drive:
+
+**[Download from Google Drive](https://drive.google.com/drive/u/0/folders/17L0uBJ1sspTK_x4m-4raml4SKH1TifHc)**
+
+### `content.zip` → `src/curobo/src/curobo/content/`
+
+Contains cuRobo asset files (robot meshes, scene assets).
+
+```bash
+unzip content.zip -d /
+# Files extract to: src/curobo/src/curobo/content/
+```
+
+> The zip stores absolute paths, so unzipping to `/` places files at the correct location automatically.
+
+### `put_red_cup_no_curtain.zip` → `PolaRiS-Hub/put_red_cup_no_curtain/`
+
+Contains the put-red-cup task environment assets (meshes, USD files, splat, config).
+
+```bash
+unzip put_red_cup_no_curtain.zip -d /tmp/polaris_env
+cp -r /tmp/polaris_env/.../put_red_cup_no_curtain PolaRiS-Hub/
+```
+
+Expected result:
+
+```
+PolaRiS-Hub/put_red_cup_no_curtain/
+├── assets/
+├── textures/
+├── cam_calibration.json
+├── initial_conditions.json
+├── scene.json
+├── scene.usda
+├── task_config.yaml
+└── task_config_*.yaml   # optional variants
+```
+
+### `nvidia_droid.zip` → `PolaRiS-Hub/nvidia_droid/`
+
+Contains the NVIDIA DROID robot USD and segmented Gaussian splat files.
+
+```bash
+unzip nvidia_droid.zip -d /
+# Files extract to: PolaRiS-Hub/nvidia_droid/
+```
+
+Expected result:
+
+```
+PolaRiS-Hub/nvidia_droid/
+├── franka_robotiq_2f_85_flattened.usd
+├── splat.ply
+└── SEGMENTED/
+    └── *.ply
+```
+
+---
 
 ## Citation
-If you find this repository useful, please consider citing it as:
+
+If you find this repository useful, please cite our work:
 
 ```bibtex
-@misc{jain2025polarisscalablerealtosimevaluations,
-      title={PolaRiS: Scalable Real-to-Sim Evaluations for Generalist Robot Policies}, 
-      author={Arhan Jain and Mingtong Zhang and Kanav Arora and William Chen and Marcel Torne and Muhammad Zubair Irshad and Sergey Zakharov and Yue Wang and Sergey Levine and Chelsea Finn and Wei-Chiu Ma and Dhruv Shah and Abhishek Gupta and Karl Pertsch},
+@misc{human2robot2025,
+      title={Human2Robot Benchmark},
+      author={},
       year={2025},
-      eprint={2512.16881},
-      archivePrefix={arXiv},
-      primaryClass={cs.RO},
-      url={https://arxiv.org/abs/2512.16881}, 
+      url={https://github.com/DavidZ2851/polaris},
 }
 ```
+
+> Paper coming soon.
+
+And please also cite the underlying PolaRiS framework (see [Built on PolaRiS](#built-on-polaris) above).
