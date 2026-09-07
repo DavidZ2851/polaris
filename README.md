@@ -251,29 +251,6 @@ python scripts/eval_policy.py \
 
 ---
 
-## Benchmark Results
-
-Results computed with `scripts/summarize_seeds.py` (3 seeds: 0, 42, 100; 30 rollouts each).  
-**SR (30 rollouts)** = mean of all stage SRs. To reproduce or append a new method:
-
-```bash
-python scripts/summarize_seeds.py <base_dir> --num-stages 4 \
-    --method <MethodName> --output-csv <path/to/results.csv>
-```
-
-### Stack Bowls
-
-| Method | Human demos | Robot demos | SR (30 rollouts) | SR 1st stage | SR 2nd stage | SR 3rd stage | SR 4th stage |
-|---|---|---|---|---|---|---|---|
-| Phantom | 0 | 100 | 60.0% ± 4.8% | 97.8% ± 1.6% | 70.0% ± 9.8% | 63.3% ± 7.2% | 8.9% ± 3.1% |
-|         | 100 | 100 | 78.9% ± 1.4% | 100.0% ± 0.0% | 96.7% ± 0.0% | 93.3% ± 2.7% | 25.6% ± 3.1% |
-|         | 200 | 100 | **79.7% ± 3.9%** | 100.0% ± 0.0% | 90.0% ± 2.7% | 86.7% ± 5.4% | 42.2% ± 7.9% |
-|         | 300 | 100 | 75.6% ± 2.7% | 100.0% ± 0.0% | 91.1% ± 3.1% | 85.6% ± 4.2% | 25.6% ± 6.8% |
-
-Run folders: `runs/new_camera_calib/stack_bowls/phantom/multiple_seeds/`
-
----
-
 ## Adding a New Policy
 
 1. Create a new client in `src/polaris/client/` inheriting from `InferenceClient` and decorate with `@InferenceClient.register(client_name="YourPolicy")`
