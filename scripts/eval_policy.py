@@ -88,6 +88,10 @@ def main(eval_args: EvalArgs):
         simulation_app.close()
         return
 
+    # Fast-forward RNG to match completed episodes so randomization resumes in sequence
+    for _ in range(episode):
+        randomize_object_poses(object_randomization, initial_conditions)
+
     policy_client: InferenceClient = InferenceClient.get_client(eval_args.policy)
 
     video = []

@@ -168,8 +168,8 @@ def build_obs(request: dict, calib: tuple) -> dict:
         # ---- images ----
         "observation.images.cam_azure_kinect_front.color":            img_to_tensor(cam0_rgb),
         "observation.images.cam_azure_kinect_left.color":             img_to_tensor(cam1_rgb),
-        "observation.images.cam_azure_kinect_front.depth":            arr_to_tensor(cam0_depth/1000.0),  # convert mm → m   
-        "observation.images.cam_azure_kinect_left.depth":             arr_to_tensor(cam1_depth/1000.0),  # convert mm → m
+        "observation.images.cam_azure_kinect_front.transformed_depth": arr_to_tensor(cam0_depth/1000.0),  # convert mm → m
+        "observation.images.cam_azure_kinect_left.transformed_depth":  arr_to_tensor(cam1_depth/1000.0),  # convert mm → m
         "observation.images.cam_wrist":                               img_to_tensor(wrist_cam),
 
         # ---- state ----
