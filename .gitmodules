@@ -13,3 +13,6 @@
 [submodule "src/polaris/policy/lerobot"]
 	path = src/polaris/policy/lerobot
 	url = git@github.com:r-pad/lerobot.git
+[submodule "src/polaris/policy/Point-Policy"]
+	path = src/polaris/policy/Point-Policy
+	url = https://github.com/DavidZ2851/Point-Policy.git
