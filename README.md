@@ -254,11 +254,6 @@ OPEN_LOOP_HORIZON=8 \
 bash src/polaris/server/launch_ghost_server.sh
 ```
 
-> **Port note:** `ghost_server.py` and the client both default to **8768**, but
-> `launch_ghost_server.sh` defaults to **8767**. If you use the launcher without
-> setting `PORT`, pass a matching `--policy.port 8767` to `eval_policy.py` — a
-> mismatch here hangs silently rather than erroring.
-
 **Step 2 — Run evaluation** (polaris `.venv`):
 
 ```bash
@@ -325,10 +320,6 @@ python scripts/eval_policy.py \
     --run_folder runs/point_policy/pick_toys_simrobot_100 \
     --rollouts 30
 ```
-
-> **Troubleshooting:** if the policy produces near-random motion, the usual cause is
-> a `data_dir` that does not match the training run — normalization statistics are
-> not stored in the checkpoint and are recomputed from that directory.
 
 ---
 
