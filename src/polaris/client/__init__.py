@@ -7,7 +7,6 @@ import polaris.client.droid_jointpos_client
 import polaris.client.lerobot_diffusion_zmq_client
 import polaris.client.amplify_client
 import polaris.client.ghost_lerobot_client
-import polaris.client.xskill_client
 # import polaris.policy.lerobot_diffusion_jointpos_client
 # import  polaris.policy.smith_jointpos_client
 # import  polaris.policy.point_policy_client
