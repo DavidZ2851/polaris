@@ -132,7 +132,10 @@ Evaluation follows a **client-server** architecture:
 | AMPLIFY | `src/polaris/server/amplify_server.py` | `AMPLIFY` | `amplify` conda env |
 | LeRobot Diffusion | `src/polaris/server/lerobot_diffusion_server.py` | `LeRobotDiffusion` | `robodiff` conda env |
 | DROID JointPos | — | `DroidJointPos` | openpi-based policies |
-| Ghost | `src/polaris/server/ghost_server.py` | `Ghost` | see `server/launch_ghost_server.sh` |
+| GHOST | `src/polaris/server/ghost_server.py` | `ghost` | `robodiff` conda env; see `server/launch_ghost_server.sh` |
+| Point-Policy | `src/polaris/server/point_policy_server.py` | `point_policy` | `point-policy` conda env; see `server/launch_pp_server.sh` |
+
+Client names are case-sensitive and must match `--policy.client` exactly — note that `ghost` and `point_policy` are lowercase.
 
 ### Camera Usage per Policy
 
@@ -143,6 +146,10 @@ Camera names in `obs["splat"]` come from the USD scene prim names (e.g. `cam0`, 
 | `DiffusionPolicy` | `cam1` | Front camera only (`(H, W, 3)`) |
 | `AMPLIFY` | `cam0`, `cam1` | Two views stacked as `(2, H, W, 3)`; `cam0` = front, `cam1` = left |
 | `DroidJointPos` | `external_cam`, `wrist_cam` | Uses sim camera names directly |
+| `ghost` | `cam0`, `cam1`, `wrist_cam` | RGB **and** depth for `cam0`/`cam1`; depth sent as uint16 millimetres |
+| `point_policy` | `cam0`, `cam1` | RGB + depth; mapped to `pixels1`/`pixels2` as Point-Policy expects |
+
+`ghost` and `point_policy` are the only policies that consume depth (`obs["splat"]["cam0_depth"]`, `cam1_depth`).
 
 ---
 
@@ -214,6 +221,114 @@ python scripts/eval_policy.py \
     --run_folder runs/new_camera_calib/amplify/<folder> \
     --rollouts 30
 ```
+
+---
+
+### Example: GHOST
+
+GHOST is a goal-conditioned LeRobot diffusion policy. Unlike the other policies,
+**the server does all the preprocessing** — the client ships raw observations and
+`ghost_server.py` builds every `observation.*` key the policy saw during training
+(image tensors, projected goal-gripper heatmaps, camera intrinsics/extrinsics,
+rot6d end-effector pose). Camera calibration is read from the `lerobot` submodule at
+`src/polaris/policy/lerobot/lerobot/scripts/droid_calibration`, so make sure
+submodules are checked out (see [Clone the repository](#1-clone-the-repository-recursively)).
+
+**Step 1 — Start the server** (separate terminal, `robodiff` env):
+
+```bash
+conda activate robodiff
+python src/polaris/server/ghost_server.py \
+    --policy_path ~/lerobot/outputs/train/pick_toys_r400h0/checkpoints/last/pretrained_model \
+    --open_loop_horizon 8 \
+    --port 8768
+```
+
+Or use the launcher, which wraps the same command and pins `CUDA_VISIBLE_DEVICES=1`:
+
+```bash
+# defaults may be overridden via environment variables
+POLICY_PATH=~/lerobot/outputs/train/pick_toys_r400h0/checkpoints/last/pretrained_model \
+PORT=8768 \
+OPEN_LOOP_HORIZON=8 \
+bash src/polaris/server/launch_ghost_server.sh
+```
+
+> **Port note:** `ghost_server.py` and the client both default to **8768**, but
+> `launch_ghost_server.sh` defaults to **8767**. If you use the launcher without
+> setting `PORT`, pass a matching `--policy.port 8767` to `eval_policy.py` — a
+> mismatch here hangs silently rather than erroring.
+
+**Step 2 — Run evaluation** (polaris `.venv`):
+
+```bash
+source .venv/bin/activate
+python scripts/eval_policy.py \
+    --policy.client ghost \
+    --policy.host localhost \
+    --policy.port 8768 \
+    --policy.open_loop_horizon 8 \
+    --environment DROID-PutRedCup-no-curtain \
+    --run_folder runs/ghost/pick_toys_r400h0 \
+    --rollouts 30
+```
+
+The client converts the policy's end-effector actions to joint commands with CuRobo IK,
+and `--open_loop_horizon` must match the value the server was started with.
+
+---
+
+### Example: Point-Policy
+
+Point-Policy splits the work the other way: the **client** does the preprocessing
+(camera renaming, depth handling) and the CuRobo IK that turns the policy's
+end-effector output into joint commands, while the server only runs inference.
+The server adds `src/polaris/policy/Point-Policy/point_policy` to `sys.path`, so the
+submodule must be checked out.
+
+**Step 1 — Start the server** (separate terminal, `point-policy` conda env):
+
+```bash
+conda activate point-policy
+python src/polaris/server/point_policy_server.py \
+    --bc_weight ~/Point-Policy/point_policy/exp_local/2026.05.22/pick_toys_simrobot_100/deterministic/223855_hidden_dim_256/snapshot/100000.pt \
+    --port 8765 \
+    --overrides "agent=point_policy" "suite=point_policy" "dataloader=point_policy" \
+                "suite.use_robot_points=true" "suite.use_object_points=true" \
+                "experiment=eval_point_policy" "suite/task/franka_env=pick_place_toys" \
+                "data_dir=$HOME/pp_data/pick_place_toys/pick_toys_simrobot_100/processed_data_pkl/expert_demos"
+```
+
+`--overrides` are passed straight through to Hydra. Two of them matter most:
+
+| Override | Meaning |
+|----------|---------|
+| `suite/task/franka_env=<task>` | Task config from `Point-Policy/point_policy/cfgs/suite/task/franka_env/` |
+| `data_dir=<path>` | Processed demo directory; the server reads normalization stats and `num_demos_per_task` from here, so it **must** match what the checkpoint was trained on |
+
+Or use the launcher, editing `data_dir_1` / `bc_weight_1` / `TASK_NAME_1` at the top:
+
+```bash
+bash src/polaris/server/launch_pp_server.sh
+```
+
+**Step 2 — Run evaluation** (polaris `.venv`):
+
+```bash
+source .venv/bin/activate
+python scripts/eval_policy.py \
+    --policy.client point_policy \
+    --policy.host localhost \
+    --policy.port 8765 \
+    --policy.open_loop_horizon 8 \
+    --environment DROID-PutRedCup-no-curtain \
+    --run_folder runs/point_policy/pick_toys_simrobot_100 \
+    --rollouts 30
+```
+
+> **Troubleshooting:** if the policy produces near-random motion, the usual cause is
+> a `data_dir` that does not match the training run — normalization statistics are
+> not stored in the checkpoint and are recomputed from that directory.
 
 ---
 
