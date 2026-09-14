@@ -4,7 +4,7 @@
 
 **Chuyang Xiao\*, Haotian Zhan\*, Sriram Krishna, Peilin Meng, Muhammad Zubair Irshad, Sergey Zakharov, David Held**  
 *Robotics Institute, Carnegie Mellon University · University of Michigan · Toyota Research Institute*  
-\* Equal contribution
+\* Equal contribution; authors are listed in alphabetical order.
 
 This repository provides the simulation benchmark, dataset generation tools, and policy evaluation framework for H2RBench — built on top of [PolaRiS](https://github.com/arhanjain/polaris).
 
@@ -82,6 +82,11 @@ Several large files are not tracked in git and must be downloaded separately.
 **[Download from Google Drive](https://drive.google.com/drive/u/0/folders/17L0uBJ1sspTK_x4m-4raml4SKH1TifHc)**
 
 After downloading, unzip each file and place it in the location described in the [Large File Setup](#large-file-setup) section below.
+
+The human and robot datasets are also available on Google Drive:
+
+- **[Human data](https://drive.google.com/drive/u/0/folders/1cYsrlzYV29HuG9yh4_F8whCqe9nLCwVM)**
+- **[Robot data](https://drive.google.com/drive/u/0/folders/1AnVtV-MxgQs41rIdMai2mfJVDp1N1gH2)**
 
 ---
 
