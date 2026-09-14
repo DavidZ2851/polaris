@@ -137,7 +137,7 @@ Evaluation follows a **client-server** architecture:
 | AMPLIFY | `src/polaris/server/amplify_server.py` | `AMPLIFY` | `amplify` conda env |
 | LeRobot Diffusion | `src/polaris/server/lerobot_diffusion_server.py` | `LeRobotDiffusion` | `robodiff` conda env |
 | DROID JointPos | — | `DroidJointPos` | openpi-based policies |
-| GHOST | `src/polaris/server/ghost_server.py` | `ghost` | `robodiff` conda env; see `server/launch_ghost_server.sh` |
+| GHOST | `src/polaris/server/ghost_server.py` | `ghost` | `lerobot` pixi env; see `server/launch_ghost_server.sh` |
 | Point-Policy | `src/polaris/server/point_policy_server.py` | `point_policy` | `point-policy` conda env; see `server/launch_pp_server.sh` |
 
 Client names are case-sensitive and must match `--policy.client` exactly — note that `ghost` and `point_policy` are lowercase.
@@ -239,11 +239,12 @@ rot6d end-effector pose). Camera calibration is read from the `lerobot` submodul
 `src/polaris/policy/lerobot/lerobot/scripts/droid_calibration`, so make sure
 submodules are checked out (see [Clone the repository](#1-clone-the-repository-recursively)).
 
-**Step 1 — Start the server** (separate terminal, `robodiff` env):
+**Step 1 — Start the server** (separate terminal, `lerobot` pixi env):
 
 ```bash
-conda activate robodiff
-python src/polaris/server/ghost_server.py \
+cd ~/lerobot
+pixi shell
+python ~/polaris/src/polaris/server/ghost_server.py \
     --policy_path ~/lerobot/outputs/train/pick_toys_r400h0/checkpoints/last/pretrained_model \
     --open_loop_horizon 8 \
     --port 8768
