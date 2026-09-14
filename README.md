@@ -283,7 +283,7 @@ and `--open_loop_horizon` must match the value the server was started with.
 
 ### Example: Point-Policy
 
-Code: [DavidZ2851/Point-Policy (`feat/polaris`)](https://github.com/DavidZ2851/Point-Policy/commits/feat/polaris/)
+Code: [DavidZ2851/Point-Policy (`feat/polaris`)](https://github.com/DavidZ2851/Point-Policy/tree/feat/polaris)
 
 **Step 1 — Start the server** (separate terminal, `point-policy` conda env):
 
