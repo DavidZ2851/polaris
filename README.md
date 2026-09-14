@@ -238,13 +238,8 @@ python scripts/eval_policy.py \
 
 ### Example: GHOST
 
-GHOST is a goal-conditioned LeRobot diffusion policy. Unlike the other policies,
-**the server does all the preprocessing** — the client ships raw observations and
-`ghost_server.py` builds every `observation.*` key the policy saw during training
-(image tensors, projected goal-gripper heatmaps, camera intrinsics/extrinsics,
-rot6d end-effector pose). Camera calibration is read from the `lerobot` submodule at
-`src/polaris/policy/lerobot/lerobot/scripts/droid_calibration`, so make sure
-submodules are checked out (see [Clone the repository](#1-clone-the-repository-recursively)).
+Code: [r-pad/ghost (`haotian/h2rbenchmark`)](https://github.com/r-pad/ghost/tree/haotian/h2rbenchmark) •
+[r-pad/lerobot (`polaris`)](https://github.com/r-pad/lerobot/tree/polaris)
 
 **Step 1 — Start the server** (separate terminal, `lerobot` pixi env):
 
@@ -288,11 +283,7 @@ and `--open_loop_horizon` must match the value the server was started with.
 
 ### Example: Point-Policy
 
-Point-Policy splits the work the other way: the **client** does the preprocessing
-(camera renaming, depth handling) and the CuRobo IK that turns the policy's
-end-effector output into joint commands, while the server only runs inference.
-The server adds `src/polaris/policy/Point-Policy/point_policy` to `sys.path`, so the
-submodule must be checked out.
+Code: [DavidZ2851/Point-Policy (`feat/polaris`)](https://github.com/DavidZ2851/Point-Policy/commits/feat/polaris/)
 
 **Step 1 — Start the server** (separate terminal, `point-policy` conda env):
 
