@@ -83,9 +83,15 @@ Several large files are not tracked in git and must be downloaded separately.
 
 After downloading, unzip each file and place it in the location described in the [Large File Setup](#large-file-setup) section below.
 
-The human and robot datasets are also available on Google Drive:
+The human datasets are available on Hugging Face:
 
-- **[Human data](https://drive.google.com/drive/u/0/folders/1cYsrlzYV29HuG9yh4_F8whCqe9nLCwVM)**
+- [Kovavavvavava/pick_place_red_mug_human](https://huggingface.co/datasets/Kovavavvavava/pick_place_red_mug_human): 180 episodes
+- [Kovavavvavava/pick_toys_human](https://huggingface.co/datasets/Kovavavvavava/pick_toys_human): 315 episodes
+- [Kovavavvavava/insert_donut_human](https://huggingface.co/datasets/Kovavavvavava/insert_donut_human): 300 episodes
+- [Kovavavvavava/stack_bowls_human](https://huggingface.co/datasets/Kovavavvavava/stack_bowls_human): 300 episodes
+
+The robot datasets are available on Google Drive:
+
 - **[Robot data](https://drive.google.com/drive/u/0/folders/1AnVtV-MxgQs41rIdMai2mfJVDp1N1gH2)**
 
 ---
